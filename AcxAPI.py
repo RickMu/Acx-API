@@ -7,6 +7,7 @@ import urllib.request
 import pprint
 import json
 import pyqtgraph.examples
+from server import MongoRepo, MongoClient
 
 API = 'https://acx.io:443//api/v2/'
 
@@ -145,6 +146,7 @@ class Coin:
         return self.newTrades
 
     def addTrades(self,trades):
+        trades = list(trades)
 
         if(trades is None):
             print("Timed Out Error")
@@ -310,8 +312,7 @@ class ACX:
     
     def fetchTrades(self,limit, market):
         #Later I think should limit by using DateTime rather then limit
-        
-       
+
         if( len(self.markets.keys())==0 ):
              raise Exception('No Markets Fetched, Call fetchMarkets() Before fetchingTrades')
 
@@ -433,15 +434,27 @@ from pyqtgraph.Qt import QtCore, QtGui
 class DataThread(pg.QtCore.QThread):
     newData = pg.QtCore.Signal(object,str)
 
+
     def __init__(self, Acx):
         super().__init__()
         self.markets= defaultdict(str)
         self.Acx = Acx
+        self.conn = MongoClient('localhost', 27017)
+        self.repos ={ 'btcaud': MongoRepo(MongoRepo.BITCOIN,self.conn)}
     def addMarket(self,market):
         self.markets[market] = 1
 
     def run(self):
-        while True:
+        for k in self.markets:
+            trades= self.repos[k].findAll()
+            m = Acx.getMarket(k)
+            m.addTrades(trades)
+            trades = m.getAllTradesDF()
+            self.newData.emit(trades, k)
+
+
+
+        '''        while True:
             for k in self.markets:
                 self.Acx.fetchTrades(100, k)
                 m = Acx.getMarket(k)
@@ -449,8 +462,7 @@ class DataThread(pg.QtCore.QThread):
                     tradesDF = m.getAllTradesDF()
                     self.newData.emit(tradesDF,k)
             time.sleep(8)
-
-
+            '''
 
 
 
@@ -682,15 +694,15 @@ graphWrapper =pyQtTimeGraphWrapper(Acx)
 
 
 #graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.HOUR)
-#graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time ")
-#graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
-#graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
-#graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
+graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time ")
+graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
+graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
+graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
 
-graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time")
-graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
-graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
-graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
+#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time")
+#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
+#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
+#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
 
 
 graphWrapper.start()
