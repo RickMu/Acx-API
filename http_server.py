@@ -1,6 +1,8 @@
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import urllib.request
 import urllib.parse
+import urllib.error
 
 from Builders import AcxApiBuilder,Service
 from Repository import AcxDB, MongoRepo
@@ -9,6 +11,17 @@ from Exchange import AcxExchange
 import datetime
 import json
 
+
+
+def loadJSON(url):
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+
+           data = json.load(response)
+        return data
+    except urllib.error.URLError as error:
+        print(error)
+        return None
 
 
 class myHandler(BaseHTTPRequestHandler):
