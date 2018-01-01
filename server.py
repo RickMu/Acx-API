@@ -1,10 +1,12 @@
 from pymongo import MongoClient
-import pymongo
-from abc import abstractmethod
 import urllib.request
+import urllib.error
 import json
 import threading
 import time
+import socket
+
+
 
 API = 'https://acx.io:443//api/v2/'
 
@@ -14,37 +16,6 @@ class Service:
     Depth = "Depth"
     SystemTime = "systime"
 
-
-
-
-def insert( collection, instance):
-    try:
-        collection.insert(instance)
-    except pymongo.errors.DuplicateKeyError as error:
-        print(error)
-
-
-def findAll( collection):
-    return collection.find()
-def clear(collection):
-    collection.remove()
-
-def findMax( collection, column):
-    return sort(collection, column, limit=1)
-
-
-def findMin( collection, column):
-    return sort(collection, column, ascending=False, limit=1)
-
-
-def sort( collection, column, largestFirst=True, limit=None):
-    order = -1
-    if (largestFirst == False):
-        order = 1
-    if (limit is not None):
-        return collection.find().sort([(column, order)]).limit(limit)
-
-    return collection.find().sort([(column, 1)])
 
 
 
@@ -92,48 +63,6 @@ class AcxApiBuilder:
         return self
 
 
-class Repository():
-    @abstractmethod
-    def insert(self, instance):
-        return
-
-    @abstractmethod
-    def findAll(self):
-        return
-    @abstractmethod
-    def clear(self):
-        return
-
-class MongoRepo(Repository):
-    BITCOIN = "btcaud"
-    ETHER = "ethaud"
-    HSR = "hsraud"
-    BCH = "bchaud"
-    def __init__(self, type, conn):
-
-        self.db = conn.Acx
-        if(type == MongoRepo.BITCOIN):
-            self.cryptocoin = self.db.bitcoin
-        elif(type== MongoRepo.ETHER):
-            self.cryptocoin = self.db.ether
-        elif(type== MongoRepo.HSR):
-            self.cryptocoin = self.db.hsr
-        elif(type== MongoRepo.BCH):
-            self.cryptocoin = self.db.bch
-
-    def insert(self, instance):
-        super().insert(instance)
-        insert(self.cryptocoin, instance)
-
-    def findAll(self):
-        return findAll(self.cryptocoin)
-
-    def findLastTrade(self):
-        return findMax(self.cryptocoin, "id")
-
-    def clear(self):
-        super().clear()
-        self.cryptocoin.remove()
 
 
 
@@ -147,9 +76,17 @@ class AcxDataFetcher():
             response = urllib.request.urlopen(url,timeout=5)
             data = json.load(response)
             return data
+        except socket.timeout as timeout:
+            print("timed out...")
+            print(timeout)
+            return None
         except urllib.error.HTTPError as error:
             print(error)
             return None
+        except urllib.error.URLError as error:
+            print(error)
+            return None
+
 
     def fetchMarkets(self):
         tickersUrl = self.apiBuilder.service(Service.Tickers).getAPI()
@@ -222,9 +159,10 @@ class DataFetcherThread(threading.Thread):
                 print("Fetching for Market: "+ i)
                 trades = self.dataFetcher.fetchTrades(100, i, lastTradeID=self.cryptoLastID[i])
                 if (trades is None or len(trades) == 0):
+                    print("No trades for Market: "+ i)
                     continue
                 #self.newData.emit(trades, i)
-                print("inserting data")
+                print("inserting data...")
                 self.insertData(trades,i)
                 time.sleep(12)
 
@@ -234,9 +172,13 @@ class DataFetcherThread(threading.Thread):
 
 
 
-fetcher = DataFetcherThread()
-fetcher.initialise()
-fetcher.start()
+
+
+
+if __name__ == '__main__':
+    fetcher = DataFetcherThread()
+    fetcher.initialise()
+    fetcher.start()
 
 
 

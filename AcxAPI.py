@@ -82,7 +82,7 @@ class AcxApiBuilder:
     def clear(self):
         self.api = API
         return self
-
+'''
 api = AcxApiBuilder()
 tickersUrl = api.service(Service.Tickers).getAPI()
 print(tickersUrl)
@@ -102,7 +102,7 @@ tradesUrlFromID = api.service(Service.Trade).market(BTCAUD).AND().fromID("411539
 
 print(tradesUrlFromID)
 
-
+'''
 
 # In[3]:
 
@@ -123,7 +123,6 @@ import pandas as pd
 def remove(string):
     string[:-3]+string[-2:]
     return string
-
 
 
 
@@ -187,6 +186,7 @@ class Coin:
         self.recentTrades['id'].append(trade['id'])
        
         if(trade['trend']=='down'):
+            #Both sold and audOutOfMarket is positive
             vol = -float(trade['volume'])
             cash = (vol*float(trade['price']))
             self.sold -=vol
@@ -200,6 +200,8 @@ class Coin:
         self.recentTrades['volume'].append(vol)
         self.recentTrades['cash'].append(cash)
         self.recentTrades['NetCashInMarket'].append(self.getNetAudInMarket())
+        self.recentTrades['AbsoluteCash'].append(self.getAbsCashInMarket())
+
     
             
     def getLastTradeID(self):
@@ -230,6 +232,9 @@ class Coin:
         return self.bought- self.sold
     def getNetAudInMarket(self):
         return self.audInMarket-self.audOutMarket
+    def getAbsCashInMarket(self):
+        return self.audInMarket + self.audOutMarket
+
 
 
       
@@ -321,10 +326,10 @@ class ACX:
             
         
         if(self.markets[market].isTradeRecordEmpty()):
-            tradesUrl = api.service(Service.Trade).market(market).AND().limit(limit).getAPI()
+            tradesUrl = self.apiBuilder.service(Service.Trade).market(market).AND().limit(limit).getAPI()
         else:
             lastTradeID = self.markets[market].getLastTradeID()
-            tradesUrl = api.service(Service.Trade).market(market).AND().fromID(lastTradeID).getAPI()
+            tradesUrl = self.apiBuilder.service(Service.Trade).market(market).AND().fromID(lastTradeID).getAPI()
             
         print(tradesUrl)
         trades = loadJSON(tradesUrl)
@@ -372,6 +377,9 @@ def datetimeToTimeStamp(d):
 
 
 def makeTimeIntervals(tradesDF, interval = 'five_min'):
+
+    if(interval == None):
+        return
     
     x = tradesDF['time'].values
     
@@ -440,14 +448,17 @@ class DataThread(pg.QtCore.QThread):
         self.markets= defaultdict(str)
         self.Acx = Acx
         self.conn = MongoClient('localhost', 27017)
-        self.repos ={ 'btcaud': MongoRepo(MongoRepo.BITCOIN,self.conn)}
+        self.repos ={ 'btcaud': MongoRepo(MongoRepo.BITCOIN,self.conn),
+                      'hsraud': MongoRepo(MongoRepo.HSR,self.conn),
+                      'ethaud': MongoRepo(MongoRepo.ETHER, self.conn),
+                      'bchaud': MongoRepo(MongoRepo.BCH, self.conn)}
     def addMarket(self,market):
         self.markets[market] = 1
 
     def run(self):
         for k in self.markets:
             trades= self.repos[k].findAll()
-            m = Acx.getMarket(k)
+            m = self.Acx.getMarket(k)
             m.addTrades(trades)
             trades = m.getAllTradesDF()
             self.newData.emit(trades, k)
@@ -490,6 +501,8 @@ class pyQtTimeGraphWrapper():
     VOLUME_PLOT = "Volume"
 
     STD_PLOT = "Std"
+
+    TRADES_COUNT_PLOT = "Trades Count"
 
     TOTAL_CASH_PLOT = "Cash"
     MAJOR_MINOR_LOCATOR= {
@@ -546,6 +559,9 @@ class pyQtTimeGraphWrapper():
             leftAxis.setTickSpacing(pyQtTimeGraphWrapper.MAJOR_MINOR_LOCATOR[pyQtTimeGraphWrapper.TOTAL_CASH_PLOT]['major'],pyQtTimeGraphWrapper.MAJOR_MINOR_LOCATOR[pyQtTimeGraphWrapper.TOTAL_CASH_PLOT]['minor'])
         elif(type == pyQtTimeGraphWrapper.STD_PLOT):
             leftAxis.setTickSpacing(coinMarket.roundedMeanPrice, coinMarket.roundedMeanPrice * 0.005)
+        elif(type == pyQtTimeGraphWrapper.TRADES_COUNT_PLOT):
+            leftAxis.setTickSpacing(10, 5)
+
 
         curve1 = p.plot()
         curve2 = p.plot()
@@ -582,6 +598,8 @@ class pyQtTimeGraphWrapper():
             elif (self.plotsData[p]['type'] == pyQtTimeGraphWrapper.STD_PLOT):
                 x, y = self.parseSTD(tradesDF)
                 color = "w"
+            elif(self.plotsData[p]['type'] == pyQtTimeGraphWrapper.TRADES_COUNT_PLOT):
+                x, y = self.parseTradeCount(tradesDF)
 
             #print('parses done for plot :'+ self.plotsData[p]['type'])
             xy = {'x': x, 'y': y}
@@ -671,6 +689,39 @@ class pyQtTimeGraphWrapper():
         return x, y
 
     def parseCash(self, tradesDF):
+
+        ids = tradesDF.groupby('time')['AbsoluteCash'].idxmax()
+        print(ids.values)
+        netcash = tradesDF.loc[ids]['NetCashInMarket'].values
+        time = tradesDF.loc[ids]['time'].values
+
+        time = datetimeToTimeStamp(time)
+        print(dt.datetime.fromtimestamp(time[0]))
+        return time, netcash
+
+    def parseTradeCount(self,tradesDF):
+        #tradesDF['Cash'] = tradesDF['price']*tradesDF['volume']
+        if ('interval' in tradesDF):
+            #count = dict((tradesDF.groupby('interval').sum())['cash'])
+            count = dict((tradesDF.groupby('interval').size()))
+        else:
+            #count = dict((tradesDF.groupby('time').sum())['cash'])
+            count = dict(tradesDF.groupby('time').size())
+
+        x=[]
+        y=[]
+        for k,v in count.items():
+            x.append(k)
+            y.append(v)
+        x = datetimeToTimeStamp(x)
+        return x,y
+
+
+
+
+
+
+'''
         d = dict((tradesDF.groupby('time').sum())['NetCashInMarket'])
         print(d)
 
@@ -681,31 +732,38 @@ class pyQtTimeGraphWrapper():
             y.append(v)
 
             # if('interval' not in tradesDF):
+
             #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
-        x = datetimeToTimeStamp(x)
-        print(dt.datetime.fromtimestamp(x[0]))
-        return x, y
+'''
 
 
-Acx = ACX()
-Acx.fetchMarkets()
-graphWrapper =pyQtTimeGraphWrapper(Acx)
+def run():
+    Acx = ACX()
+    Acx.fetchMarkets()
+    graphWrapper =pyQtTimeGraphWrapper(Acx)
 
 
 
-#graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.HOUR)
-graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time ")
-graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
-graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
-graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
+    #graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.HOUR)
+    graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time ")
+    graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
+    graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
+    graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.TRADES_COUNT_PLOT,None, name = "Trade Count Vs 1_Min Time")
 
-#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time")
-#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
-#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
-#graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
+    #graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time")
+    #graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
+    #graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
+    #graphWrapper.addPlot(HSRAUD,pyQtTimeGraphWrapper.TRADES_COUNT_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
 
+    #graphWrapper.addPlot(ETHAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time")
+    #graphWrapper.addPlot(ETHAUD,pyQtTimeGraphWrapper.STD_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Strd Deviation Vs Five_Min Time")
+    #graphWrapper.addPlot(ETHAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetVolume Vs Five_Min Time")
+    #graphWrapper.addPlot(ETHAUD,pyQtTimeGraphWrapper.TOTAL_CASH_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "NetCash Vs Five_Min Time")
 
-graphWrapper.start()
+    graphWrapper.start()
+
+if __name__ == "__main__":
+    run()
 
 '''
 win = pg.GraphicsWindow()
