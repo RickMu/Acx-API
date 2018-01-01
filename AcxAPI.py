@@ -6,10 +6,7 @@
 import urllib.request
 import pprint
 import json
-import pyqtgraph.examples
-from Repository import MongoRepo, MongoClient
-
-API = 'https://acx.io:443//api/v2/'
+from Builders import AcxApiBuilder, Service
 
 
 
@@ -30,58 +27,6 @@ HSRAUD="hsraud"
 
 
 
-class Service:
-    Tickers= "Tickers"
-    Trade = "Trade"
-    Depth = "Depth"
-    SystemTime= "systime"
-    
-
-class AcxApiBuilder:
-    def __init__(self):
-        self.api = API
-
-    def getAPI(self):
-        
-        api = self.api
-        self.clear()
-        return api
-    
-    def service(self,service):
-        
-        if(service==Service.Tickers):
-            self.api= self.api+"tickers.json"        
-        elif(service==Service.Trade):
-            self.api= self.api+"trades.json"
-        
-        elif(service==Service.Depth):
-            self.api= self.api+"depth.json"
-        elif(service==Service.SystemTime):
-            self.api= self.api+"timestamp.json"
-        return self
-            
-    
-    def market(self,market):
-        self.api = self.api+"?market="+market
-        return self
-    def fromID(self,id):
-        self.api = self.api+"from="+str(id)
-        
-        return self
-        
-    
-    def AND(self):
-        self.api+= "&"
-        return self
-    
-    def limit(self,limit):
-        self.api+= ("limit="+str(limit))
-        
-        return self
-    
-    def clear(self):
-        self.api = API
-        return self
 '''
 api = AcxApiBuilder()
 tickersUrl = api.service(Service.Tickers).getAPI()
@@ -435,47 +380,10 @@ def parseVolume(tradesDF):
 
 
 
-import time
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 
-class DataThread(pg.QtCore.QThread):
-    newData = pg.QtCore.Signal(object,str)
-
-
-    def __init__(self, Acx):
-        super().__init__()
-        self.markets= defaultdict(str)
-        self.Acx = Acx
-        self.conn = MongoClient('localhost', 27017)
-        self.repos ={ 'btcaud': MongoRepo(MongoRepo.BITCOIN,self.conn),
-                      'hsraud': MongoRepo(MongoRepo.HSR,self.conn),
-                      'ethaud': MongoRepo(MongoRepo.ETHER, self.conn),
-                      'bchaud': MongoRepo(MongoRepo.BCH, self.conn)}
-    def addMarket(self,market):
-        self.markets[market] = 1
-
-    def run(self):
-        for k in self.markets:
-            trades= self.repos[k].findAll()
-            m = self.Acx.getMarket(k)
-            m.addTrades(trades)
-            trades = m.getAllTradesDF()
-            self.newData.emit(trades, k)
-
-
-
-        '''        while True:
-            for k in self.markets:
-                self.Acx.fetchTrades(100, k)
-                m = Acx.getMarket(k)
-                if(m.hasNewTrades()):
-                    tradesDF = m.getAllTradesDF()
-                    self.newData.emit(tradesDF,k)
-            time.sleep(8)
-            '''
-
-
+from http_client import HttpClient
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):
@@ -521,8 +429,8 @@ class pyQtTimeGraphWrapper():
         import sys
 
         proxy = pg.SignalProxy(self.win.sceneObj.sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
-        self.dataThread.newData.connect(self.update)
-        self.dataThread.start()
+        self.client.newData.connect(self.update)
+        self.client.start()
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
             QtGui.QApplication.instance().exec_()
 
@@ -533,7 +441,7 @@ class pyQtTimeGraphWrapper():
         self.plotsData = defaultdict(dict)
         self.marketPlots = defaultdict(list)
         self.Acx = Acx
-        self.dataThread = DataThread(Acx)
+        self.client = HttpClient(Acx)
         self.row = 0
 
     def addPlot(self, market, type, interval, name = None,axis=None):
@@ -569,7 +477,7 @@ class pyQtTimeGraphWrapper():
         self.plots.append(p)
         self.plotsData[p] = {'market': market, 'type': type, 'curve': [curve1,curve2], 'interval': interval}
         self.marketPlots[market].append(p)
-        self.dataThread.addMarket(market)
+        self.client.addMarket(market)
 
 
         self.plotsData[p]['label'] = label
@@ -580,6 +488,8 @@ class pyQtTimeGraphWrapper():
         self.plotsData[p]['cross'] = [vLine, hLine]
 
         return p
+
+
 
     def update(self, tradesDF, market):
         # getData()
@@ -741,8 +651,6 @@ def run():
     Acx = ACX()
     Acx.fetchMarkets()
     graphWrapper =pyQtTimeGraphWrapper(Acx)
-
-
 
     #graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.VOLUME_PLOT,pyQtTimeGraphWrapper.HOUR)
     graphWrapper.addPlot(BTCAUD,pyQtTimeGraphWrapper.PRICE_PLOT,pyQtTimeGraphWrapper.FIVE_MIN, name = "Mean Price Vs Five_Min Time ")

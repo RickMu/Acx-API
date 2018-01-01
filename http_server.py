@@ -2,7 +2,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.parse
 
-from AcxAPI import AcxApiBuilder, Service,loadJSON
+from Builders import AcxApiBuilder,Service
 from Repository import AcxDB, MongoRepo
 from Error import ServerError
 from Exchange import AcxExchange
@@ -58,7 +58,7 @@ class ServerService:
 
 class ServerParser:
     def __init__(self):
-        self.db = AcxDB()
+        self.db = AcxDB.getAcxDB()
         self.requestMapper = {
             ServerService.FindAll:self.parseFindAll,
             ServerService.FindAfter:self.parseFindAfterTime
@@ -139,7 +139,16 @@ class ServerParser:
 class ServerRequest:
 
     def __init__(self, portnumber):
-        self.rq = "localhost:"+portnumber
+        self.rq = "http://localhost:"+str(portnumber)
+        self.portnumber = portnumber
+
+    def getRequest(self):
+        request = self.rq
+        self.clear()
+        return request
+
+    def clear(self):
+        self.rq = "localhost:"+str(self.portnumber)
 
     def Service(self,service):
         self.rq +=("/"+service)
@@ -178,14 +187,21 @@ class ServerRequest:
         else:
             self.Market(market)
 
+        return self.getRequest()
+
 
     '''
     Retrieves all the instances after a certain time
     '''
-    def buildAfterTimeRequest(self, market,day, hour, minute):
+    def buildAfterTimeRequest(self, market,day = None, hour= None, minute= None):
 
         self.Service(ServerService.FindAfter)
         self.Query()
+
+        if (market is None):
+            raise Exception("Market cannot be None")
+        else:
+            self.Market(market)
 
         if(day is not None):
             self.AND()
@@ -196,7 +212,8 @@ class ServerRequest:
         if(minute is not None):
             self.AND()
             self.Minute(minute)
-        return self.rq
+
+        return self.getRequest()
 
 def run():
 

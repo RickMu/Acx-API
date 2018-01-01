@@ -8,6 +8,9 @@ from Error import DataBaseError
 
 
 class AcxDB():
+
+    db = None
+
     def __init__(self):
         self.conn = MongoClient('localhost', 27017)
         self.BitcoinRepo = None
@@ -20,6 +23,13 @@ class AcxDB():
             AcxExchange.Market.ETHER:self.getEtherRepo,
             AcxExchange.Market.HSR:self.getHSRRepo
         }
+
+    @staticmethod
+    def getAcxDB():
+        if AcxDB.db is None:
+            AcxDB.db = AcxDB()
+        return AcxDB.db
+
 
     def getRepository(self,market):
 
