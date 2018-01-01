@@ -7,7 +7,7 @@ import urllib.request
 import pprint
 import json
 import pyqtgraph.examples
-from server import MongoRepo, MongoClient
+from Repository import MongoRepo, MongoClient
 
 API = 'https://acx.io:443//api/v2/'
 

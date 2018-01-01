@@ -4,25 +4,76 @@ import urllib.parse
 
 from AcxAPI import AcxApiBuilder, Service,loadJSON
 from Repository import AcxDB, MongoRepo
-
+from Error import ServerError
+from Exchange import AcxExchange
 import datetime
+import json
 
 
 
 class myHandler(BaseHTTPRequestHandler):
 
+    #Handler for the GET requests
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type','text/html')
+        self.end_headers()
+        # Send the html message
+
+
+        parseResult = urllib.parse.urlparse(self.path)
+        service = parseResult.path.split("/")[1]
+        param_dict = urllib.parse.parse_qs(parseResult.query)
+
+        parser = ServerParser()
+        response, error = parser.parseRequest(service, param_dict)
+
+
+        if error is not None:
+            self.wfile.write(bytes(error.getErrorMsg(), "utf8"))
+            return
+
+        self.wfile.write(bytes(json.dumps(response),"utf8"))
+
+        return
+
+
+
+
+
+class ServerInfo:
     PORT_NUMBER=8080
 
+
+class PARAMS:
+    HOUR ="hour"
+    MINUTE = "minute"
+    DAY = "day"
+    MARKET = "market"
+
+class ServerService:
+    FindAll = "findall"
+    FindAfter="findafter"
+
+
+class ServerParser:
     def __init__(self):
-        super().__init__()
         self.db = AcxDB()
-        self.repos = {
-            MongoRepo.BCH : self.db.getBCHRepo(),
-            MongoRepo.BITCOIN :self.db.getBitcoinRepo(),
-            MongoRepo.ETHER: self.db.getEtherRepo(),
-            MongoRepo.HSR: self.db.getHSRRepo(),
+        self.requestMapper = {
+            ServerService.FindAll:self.parseFindAll,
+            ServerService.FindAfter:self.parseFindAfterTime
         }
 
+    def parseRequest(self,service,params_dict):
+        if service not in self.requestMapper.keys():
+            return None, ServerError("Service: "+service+" not in service provided "
+                                     +str(self.requestMapper.keys()))
+        response, error = self.requestMapper[service](params_dict)
+
+        if error is not None:
+            return None, error
+
+        return response, None
 
     def fetchSystemTime(self):
         api = AcxApiBuilder()
@@ -34,32 +85,40 @@ class myHandler(BaseHTTPRequestHandler):
         readable = datetime.datetime.fromtimestamp(sysTime)
         return readable
 
+    def aestToUTC(self, time):
+        time = time- datetime.timedelta(hours=11)
+        return time.isoformat()
 
+    def parseFindAll(self, params_dict):
 
-    #Handler for the GET requests
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type','text/html')
-        self.end_headers()
-        # Send the html message
-        #message = "Hello World!"
+        if PARAMS.MARKET not in params_dict:
+            error = ServerError(ServerError.Four +": No Market Specified")
+            return None, error
 
-        #self.wfile.write(bytes(message, "utf8"))
-        #self.wfile.write(bytes(str(self.path.split("/")), "utf8"))
+        market = params_dict[PARAMS.MARKET][0]
+        repo,error = self.db.getRepository(market)
 
-        parseResult = urllib.parse.urlparse(self.path)
+        if error is not None:
+            return None, error
 
-        param_dict = urllib.parse.parse_qs(parseResult.query)
+        response = list(repo.findAll())
+        return response, error
 
+    def parseFindAfterTime(self,param_dict):
+
+        if PARAMS.MARKET not in param_dict:
+            error = ServerError(ServerError.Four + ": No Market Specified")
+            return None, error
+
+        market = param_dict[PARAMS.MARKET][0]
+        repo,error = self.db.getRepository(market)
+
+        if error is not None:
+            return None, error
+
+        hour =0
         day = 0
-        hour = 0
-        minute = 0
-        market = None
-        if PARAMS.MARKET in param_dict:
-            market = param_dict[PARAMS.MARKET]
-        else:
-            self.wfile.write(bytes("Error: 200", "utf8"))
-
+        minute= 0
         if PARAMS.HOUR in param_dict:
             hour = int(param_dict[PARAMS.HOUR][0])
         if PARAMS.DAY in param_dict:
@@ -67,53 +126,67 @@ class myHandler(BaseHTTPRequestHandler):
         if PARAMS.MINUTE in param_dict:
             minute = int(param_dict[PARAMS.MINUTE][0])
 
-        offset = datetime.timedelta(days=day,hours=hour,minutes=minute)
+        offset = datetime.timedelta(days=day, hours=hour, minutes=minute)
         currtime = self.fetchSystemTime()
-
         currtime = currtime - offset
-        utcTime = self.aestToUTC(currtime)
+        utcTime = self.aestToUTC(currtime)+"Z"
+        print(utcTime)
+        cursor = repo.findAfterTime(utcTime)
+        return list(cursor), None
 
 
 
-        self.wfile.write(bytes(str(currtime.isoformat()),"utf8"))
-        #self.wfile.write(bytes(str(parseResult), "utf8"))
-        return
+class ServerRequest:
 
-    def aestToUTC(self, time):
-        time = time- datetime.timedelta(hours=11)
-        return time.isoformat()
+    def __init__(self, portnumber):
+        self.rq = "localhost:"+portnumber
 
+    def Service(self,service):
+        self.rq +=("/"+service)
+        return self
 
-class PARAMS:
-    HOUR ="hour"
-    MINUTE = "minute"
-    DAY = "day"
-    MARKET = "market"
+    def Query(self):
+        self.rq +=  "?"
+        return self
 
-class serverRequest:
-
-    ADDRESS = "localhost:"+str(myHandler.PORT_NUMBER)
-
-    def __init__(self):
-        self.rq= serverRequest.ADDRESS
     def AND(self):
         self.rq+="&"
+        return self
+
     def Day(self,day):
         self.rq+=(PARAMS.DAY+"="+str(day))
+        return self
+
     def Hour(self,hour):
         self.rq+=(PARAMS.HOUR+"="+str(hour))
+        return self
+
     def Minute(self,minute):
         self.rq+=(PARAMS.MINUTE+"="+str(minute))
+        return self
 
     def Market(self,market):
         self.rq += (PARAMS.MARKET + "=" + str(market))
+        return self
 
-    def request(self, market,day, hour, minute):
-        self.rq= serverRequest.ADDRESS+"/?"
-        if(market is None):
+    def buildFindAllRequest(self, market):
+
+        self.Service(ServerService.FindAll)
+        self.Query()
+        if (market is None):
             raise Exception("Market cannot be None")
         else:
             self.Market(market)
+
+
+    '''
+    Retrieves all the instances after a certain time
+    '''
+    def buildAfterTimeRequest(self, market,day, hour, minute):
+
+        self.Service(ServerService.FindAfter)
+        self.Query()
+
         if(day is not None):
             self.AND()
             self.Day(day)
@@ -125,15 +198,13 @@ class serverRequest:
             self.Minute(minute)
         return self.rq
 
-
-
 def run():
 
     try:
         #Create a web server and define the handler to manage the
         #incoming request
-        server = HTTPServer(('localhost', myHandler.PORT_NUMBER), myHandler)
-        print ('Started httpserver on port ' , myHandler.PORT_NUMBER)
+        server = HTTPServer(('localhost', ServerInfo.PORT_NUMBER), myHandler)
+        print ('Started httpserver on port ' , ServerInfo.PORT_NUMBER)
 
         #Wait forever for incoming htto requests
         server.serve_forever()
@@ -145,6 +216,16 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
 
+    '''
+    parser = ServerParser()
+    response, error = parser.parseRequest(ServerService.FindAll,{PARAMS.MARKET:[AcxExchange.Market.BITCOIN]})
+
+    if error is not None:
+        print(error.getErrorMsg())
+    else:
+        print(response)
+    '''
+
+    run()
 

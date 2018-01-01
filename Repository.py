@@ -1,6 +1,9 @@
 
 from pymongo import MongoClient, errors
 from abc import abstractmethod
+from Exchange import AcxExchange
+from Error import DataBaseError
+
 
 
 
@@ -11,18 +14,33 @@ class AcxDB():
         self.EtherRepo = None
         self.HSRRepo = None
         self.BCHRepo = None
+        self.getRepo= {
+            AcxExchange.Market.BITCOIN: self.getBitcoinRepo,
+            AcxExchange.Market.BCH:self.getBCHRepo,
+            AcxExchange.Market.ETHER:self.getEtherRepo,
+            AcxExchange.Market.HSR:self.getHSRRepo
+        }
+
+    def getRepository(self,market):
+
+        if market not in self.getRepo:
+            error = DataBaseError("Market: "+market +" not in repository"
+                                  + " "+str(self.getRepo.keys()))
+            return None, error
+
+        return self.getRepo[market](), None
 
     def getBitcoinRepo(self):
         if(self.BitcoinRepo is None):
-            self.BitcoinRepo = MongoRepo(MongoRepo.BITCOIN,self.conn)
+            self.BitcoinRepo = MongoRepo(AcxExchange.Market.BITCOIN,self.conn)
         return self.BitcoinRepo
     def getEtherRepo(self):
         if(self.EtherRepo is None):
-            self.EtherRepo = MongoRepo(MongoRepo.ETHER,self.conn)
+            self.EtherRepo = MongoRepo(AcxExchange.Market.ETHER,self.conn)
         return self.EtherRepo
     def getHSRRepo(self):
         if(self.HSRRepo is None):
-            self.HSRRepo = MongoRepo(MongoRepo.HSR,self.conn)
+            self.HSRRepo = MongoRepo(AcxExchange.Market.HSR,self.conn)
         return self.HSRRepo
     def getBCHRepo(self):
         if(self.BCHRepo is None):
@@ -45,19 +63,16 @@ class Repository():
 
 
 class MongoRepo(Repository):
-    BITCOIN = "btcaud"
-    ETHER = "ethaud"
-    HSR = "hsraud"
-    BCH = "bchaud"
+
     def __init__(self, type, conn):
         self.db = conn.Acx
-        if(type == MongoRepo.BITCOIN):
+        if(type == AcxExchange.Market.BITCOIN):
             self.cryptocoin = self.db.bitcoin
-        elif(type== MongoRepo.ETHER):
+        elif(type== AcxExchange.Market.ETHER):
             self.cryptocoin = self.db.ether
-        elif(type== MongoRepo.HSR):
+        elif(type==AcxExchange.Market.HSR):
             self.cryptocoin = self.db.hsr
-        elif(type== MongoRepo.BCH):
+        elif(type== AcxExchange.Market.BCH):
             self.cryptocoin = self.db.bch
 
     def insert(self, instance):
@@ -67,7 +82,7 @@ class MongoRepo(Repository):
         except errors.DuplicateKeyError as error:
             print(error)
     def findAll(self):
-        return self.cryptocoin.find()
+        return self.cryptocoin.find({},{'_id':0})
 
     def findLastTrade(self):
         return self.findMax(self.cryptocoin, "id")
@@ -87,11 +102,11 @@ class MongoRepo(Repository):
         if (largestFirst == False):
             order = 1
         if (limit is not None):
-            return self.cryptocoin.find().sort([(column, order)]).limit(limit)
-        return self.cryptocoin.find().sort([(column, 1)])
+            return self.cryptocoin.find({"_id":0}).sort([(column, order)]).limit(limit)
+        return self.cryptocoin.find({"_id":0}).sort([(column, 1)])
 
     def findAfterTime(self, time):
-        return self.cryptocoin.find({'created_at': {'$gt': time}})
+        return self.cryptocoin.find({'created_at': {'$gt': time}},{"_id":0})
 
 '''
 Tests of the above operations should be done over here
