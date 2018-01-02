@@ -3,14 +3,10 @@
 
 # In[1]:
 
-import urllib.request
-import pprint
 import json
+import urllib.request
+
 from Builders import AcxApiBuilder, Service
-
-
-
-
 
 # In[ ]:
 
@@ -61,7 +57,6 @@ def loadJSON(url):
         return None
 
 import datetime as dt
-import re
 from collections import defaultdict
 import pandas as pd
 
@@ -129,23 +124,12 @@ class Coin:
         self.recentTrades['time'].append(timestr)
         self.recentTrades['price'].append(float(trade['price']))
         self.recentTrades['id'].append(trade['id'])
-       
-        if(trade['trend']=='down'):
-            #Both sold and audOutOfMarket is positive
-            vol = -float(trade['volume'])
-            cash = (vol*float(trade['price']))
-            self.sold -=vol
-            self.audOutMarket -= cash            
-        else:
-            vol = float(trade['volume'])
-            cash = (vol*float(trade['price']))
-            self.bought+= vol
-            self.audInMarket += cash
-        
+
+        vol = float(trade['volume'])
+        cash = (vol * float(trade['price']))
+
         self.recentTrades['volume'].append(vol)
         self.recentTrades['cash'].append(cash)
-        self.recentTrades['NetCashInMarket'].append(self.getNetAudInMarket())
-        self.recentTrades['AbsoluteCash'].append(self.getAbsCashInMarket())
 
     
             
@@ -309,8 +293,6 @@ class ACX:
 # In[11]:
 
 
-from collections import OrderedDict
-
 import time
 def datetimeToTimeStamp(d):
     d= [dt.datetime.strptime(i,TRADES_TIME_FORMAT) for i in d]
@@ -383,7 +365,7 @@ def parseVolume(tradesDF):
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 
-from http_client import HttpClient
+from client_server.http_client import HttpClient
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

@@ -1,11 +1,11 @@
+import json
+import urllib
+from collections import defaultdict
 
 import pyqtgraph as pg
-from Repository import AcxDB
-from collections import defaultdict
-from http_server import ServerRequest
-from http_server import ServerInfo
-import urllib
-import json
+
+from client_server.http_server import ServerInfo
+from client_server.http_server import ServerRequest
 
 
 def loadJSON(url):
