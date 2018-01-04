@@ -1,10 +1,8 @@
 
 from pymongo import MongoClient, errors
 from abc import abstractmethod
-from Exchange import AcxExchange
+from exchange.acx_exchange import AcxExchange
 from Error import DataBaseError
-
-
 
 
 class AcxDB():

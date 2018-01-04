@@ -4,10 +4,9 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-from Builders import AcxApiBuilder,Service
-from repository import AcxDB, MongoRepo
-from Error import ServerError
-from Exchange import AcxExchange
+from builders.acx_builder import AcxApiBuilder,Service
+from repository.acx_repo import AcxDB, MongoRepo
+from client_server.errors import ServerError
 import datetime
 import json
 
