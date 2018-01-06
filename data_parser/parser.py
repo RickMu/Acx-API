@@ -130,6 +130,23 @@ def txtParserVolumeSum(data):
     volume = data['volume'].sum()
     return volume
 
+def txtParserCashSum(data):
+    volume = data['cash'].sum()
+    return volume
+
+def txtParserLatestPrice(data):
+    price = data['price'].values[-1]
+    return price
+def txtParserPriceVolumeProduct(data):
+    totalVolume = txtParserVolumeSum(data)
+    currPrice = txtParserLatestPrice(data)
+    return currPrice*totalVolume
+
+def txtParserCashDifference(data):
+    proposedAmount = txtParserPriceVolumeProduct(data)
+    actualAmount = txtParserCashSum(data)
+
+    return proposedAmount-actualAmount
 
 
 def countDigits(num):
@@ -172,6 +189,17 @@ def priceIntervalVolumePercentage(data):
         y.append(v*100/totalVolume)
     return x,y
 
+def priceIntervalGainLoss(data):
+    x,y = priceIntervalVolumePercentage(data)
+    totalVolume = txtParserVolumeSum(data)
+    currPrice = txtParserLatestPrice(data)
+    for i in range(len(y)):
+        y[i] = totalVolume*y[i]
+
+    for i in range(len(y)):
+        diff = currPrice- x[i]
+        y[i] = y[i]*diff
+    return x,y
 
 
 

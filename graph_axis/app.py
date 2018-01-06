@@ -83,8 +83,8 @@ if __name__ == "__main__":
     from data_parser.parser import *
     acx = AcxExchange()
 
-    app = pyQtTimeGraphWrapper(acx,4,3)
-    app.setMarket(AcxExchange.Market.HSR)
+    app = pyQtTimeGraphWrapper(acx,6,3)
+    app.setMarket(AcxExchange.Market.BITCOIN)
 
     g1= Graph(name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")
@@ -102,12 +102,22 @@ if __name__ == "__main__":
     b1.addPlot(priceIntervalVolumePercentage,"Bar Percentage")
     app.addGraph(b1,3,0,addLabel=True)
 
+    b2 = BarGraph(name = "Bar Gain/Loss Graph")
+    b2.addPlot(priceIntervalGainLoss, "Bar Percentage")
+    app.addGraph(b2, 4, 0, addLabel=True)
+
     t1 = Text(txtParserAvgPrice,CommonStyle.CenterText,"Avg Price",pos='left')
-    app.addText(t1,4,0)
+    app.addText(t1,5,0)
 
     t2 = Text(txtParserVolumeSum, CommonStyle.CenterText,"Total Volume",)
-    app.addText(t2,3,0)
+    app.addText(t2,5,0)
+    t2 = Text(txtParserCashSum, CommonStyle.CenterText, "Total Cash", pos='right')
+    app.addText(t2, 5, 0)
+
+    t2 = Text(txtParserPriceVolumeProduct, CommonStyle.CenterText,"Price Volume Product", pos ='left')
+    app.addText(t2, 6, 0)
+
+    t2 = Text(txtParserCashDifference, CommonStyle.CenterText, "Price Volume Product")
+    app.addText(t2, 6, 0)
 
     app.start()
-
-

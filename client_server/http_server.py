@@ -32,7 +32,6 @@ class myHandler(BaseHTTPRequestHandler):
         self.end_headers()
         # Send the html message
 
-
         parseResult = urllib.parse.urlparse(self.path)
         service = parseResult.path.split("/")[1]
         param_dict = urllib.parse.parse_qs(parseResult.query)

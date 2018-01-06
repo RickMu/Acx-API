@@ -52,7 +52,7 @@ class AcxDB():
         return self.HSRRepo
     def getBCHRepo(self):
         if(self.BCHRepo is None):
-            self.BCHRepo = MongoRepo(MongoRepo.BCH,self.conn)
+            self.BCHRepo = MongoRepo(AcxExchange.Market.BCH,self.conn)
         return self.BCHRepo
 
 
@@ -93,25 +93,25 @@ class MongoRepo(Repository):
         return self.cryptocoin.find({},{'_id':0})
 
     def findLastTrade(self):
-        return self.findMax(self.cryptocoin, "id")
+        return self.findMax("id")
 
     def clear(self):
         super().clear()
         self.cryptocoin.remove()
 
     def findMax(self, column):
-        return self.sort(self.cryptocoin, column, limit=1)
+        return self.sort(column, limit=1)
 
     def findMin(self, column):
-        return self.sort(self.cryptocoin, column, ascending=False, limit=1)
+        return self.sort( column, ascending=False, limit=1)
 
     def sort(self, column, largestFirst=True, limit=None):
         order = -1
         if (largestFirst == False):
             order = 1
         if (limit is not None):
-            return self.cryptocoin.find({"_id":0}).sort([(column, order)]).limit(limit)
-        return self.cryptocoin.find({"_id":0}).sort([(column, 1)])
+            return self.cryptocoin.find(projection={"_id":False}).sort([(column, order)]).limit(limit)
+        return self.cryptocoin.find(projection={"_id":False}).sort([(column, order)]).limit(100)
 
     def findAfterTime(self, time):
         return self.cryptocoin.find({'created_at': {'$gt': time}},{"_id":0})
@@ -121,6 +121,9 @@ Tests of the above operations should be done over here
 '''
 if __name__ == "__main__":
     db = AcxDB()
-    cursor = db.getBitcoinRepo().findAfterTime("2017-12-31T09:38:27Z")
+    #cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findAfterTime("2017-12-31T09:38:27Z")
+    cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findLastTrade()
+    for i in cursor:
+        print(i)
 
 
