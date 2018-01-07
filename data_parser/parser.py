@@ -120,6 +120,7 @@ def parseTradeCount(data):
     return x,y
 
 
+
 def txtParserAvgPrice(data):
     volume = data['volume'].sum()
     cash = data['cash'].sum()

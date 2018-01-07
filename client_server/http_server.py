@@ -14,8 +14,7 @@ import json
 
 def loadJSON(url):
     try:
-        with urllib.request.urlopen(url, timeout=5) as response:
-
+        with urllib.request.urlopen(url, timeout=3) as response:
            data = json.load(response)
         return data
     except urllib.error.URLError as error:
@@ -31,6 +30,7 @@ class myHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type','text/html')
         self.end_headers()
         # Send the html message
+        print("Request: +"+ self.path)
 
         parseResult = urllib.parse.urlparse(self.path)
         service = parseResult.path.split("/")[1]
@@ -61,10 +61,70 @@ class PARAMS:
     MINUTE = "minute"
     DAY = "day"
     MARKET = "market"
+    START_DATETIME = "start_date"
+
+    def findDatesInParams(self,param_dict):
+        date = None
+
+        if PARAMS.START_DATETIME in param_dict:
+            date = param_dict[PARAMS.START_DATETIME][0]
+        return date
+
+    def stripDatesToDateTime(self,date):
+        format =  '%Y-%m-%dT%H:%M'
+
+        d = datetime.datetime.strptime(date,format)
+
+        return d
+
+    def findTimesInParams(self, param_dict):
+        hour =None
+        day =None
+        minute = None
+
+        if PARAMS.HOUR in param_dict:
+            hour = int(param_dict[PARAMS.HOUR][0])
+        if PARAMS.DAY in param_dict:
+            day = int(param_dict[PARAMS.DAY][0])
+        if PARAMS.MINUTE in param_dict:
+            minute = int(param_dict[PARAMS.MINUTE][0])
+
+        return day, hour, minute
+
+    def findMarketInParams(self,params_dict):
+        if PARAMS.MARKET not in params_dict:
+            return None
+
+        return params_dict[PARAMS.MARKET][0]
+
+
+    def constructStartDate(self,year, month, day,hour= 0,minute=0):
+        # Format to follow is this %Y-%m-%dT%H:%M
+
+        def addZeroIfLenOne(digit):
+            dig = str(digit)
+            if(len (str(digit))==1):
+                dig = "0"+dig
+            return dig
+
+        if(len(str(year))!=4):
+            raise Exception("Year has to be 4 digits, given : " + str(year))
+
+        y = str(year)
+        mon = addZeroIfLenOne(month)
+        d = addZeroIfLenOne(day)
+        h = addZeroIfLenOne(hour)
+        m = addZeroIfLenOne(minute)
+        string = y+"-"+mon+"-"+d+"T"+h+":"+m
+        return string
+
+
+
 
 class ServerService:
     FindAll = "findall"
     FindAfter="findafter"
+    FindInBetween = "findinbetween"
 
 
 class ServerParser:
@@ -72,8 +132,10 @@ class ServerParser:
         self.db = AcxDB.getAcxDB()
         self.requestMapper = {
             ServerService.FindAll:self.parseFindAll,
-            ServerService.FindAfter:self.parseFindAfterTime
+            ServerService.FindAfter:self.parseFindAfterTime,
+            ServerService.FindInBetween:self.parseFindInBetween
         }
+        self.p = PARAMS()
 
     def parseRequest(self,service,params_dict):
         if service not in self.requestMapper.keys():
@@ -92,8 +154,11 @@ class ServerParser:
         systemTimeUrl = api.service(Service.SystemTime).getAPI()
 
         sysTime = loadJSON(systemTimeUrl)
+        if(sysTime is not None):
+            readable = datetime.datetime.fromtimestamp(sysTime)
+        if(sysTime is None):
+            readable = datetime.datetime.now()
 
-        readable = datetime.datetime.fromtimestamp(sysTime)
         return readable
 
     def aestToUTC(self, time):
@@ -102,11 +167,11 @@ class ServerParser:
 
     def parseFindAll(self, params_dict):
 
-        if PARAMS.MARKET not in params_dict:
-            error = ServerError(ServerError.Four +": No Market Specified")
+        market = self.p.findMarketInParams(params_dict)
+        if market is None:
+            error = ServerError(ServerError.Four + ": No Market Specified")
             return None, error
 
-        market = params_dict[PARAMS.MARKET][0]
         repo,error = self.db.getRepository(market)
 
         if error is not None:
@@ -115,36 +180,74 @@ class ServerParser:
         response = list(repo.findAll())
         return response, error
 
-    def parseFindAfterTime(self,param_dict):
+    def parseFindInBetween(self,params_dict):
 
-        if PARAMS.MARKET not in param_dict:
+        market = self.p.findMarketInParams(params_dict)
+        if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
             return None, error
 
-        market = param_dict[PARAMS.MARKET][0]
+        repo, error = self.db.getRepository(market)
+        if error is not None:
+            return None, error
+
+
+        date = self.p.findDatesInParams(params_dict)
+        if date is None:
+            error = ServerError(ServerError.Four + ": No Start Date requesting for FindInBetween")
+            return None, error
+
+        print(params_dict)
+        start_date = self.p.stripDatesToDateTime(date)
+
+        day,hour,minute = self.p.findTimesInParams(params_dict)
+        if hour is None:
+            hour= 0
+        if day is None:
+            day = 0
+        if minute is None:
+            minute = 0
+
+        date_length = datetime.timedelta(days=day, hours=hour, minutes=minute)
+        before_date = start_date-date_length
+
+        start_date = start_date.isoformat()
+        before_date = before_date.isoformat()
+        print(start_date)
+        print(before_date)
+
+        cursor = repo.findInBetweenTime(start_date,before_date)
+        return list(cursor), None
+
+
+    def parseFindAfterTime(self,params_dict):
+
+        market = self.p.findMarketInParams(params_dict)
+        if market is None:
+            error = ServerError(ServerError.Four + ": No Market Specified")
+            return None, error
+
         repo,error = self.db.getRepository(market)
 
         if error is not None:
             return None, error
 
-        hour =0
-        day = 0
-        minute= 0
-        if PARAMS.HOUR in param_dict:
-            hour = int(param_dict[PARAMS.HOUR][0])
-        if PARAMS.DAY in param_dict:
-            day = int(param_dict[PARAMS.DAY][0])
-        if PARAMS.MINUTE in param_dict:
-            minute = int(param_dict[PARAMS.MINUTE][0])
+
+
+        day,hour, minute =self.p.findTimesInParams(params_dict)
+        if hour is None:
+            hour = 0
+        if day is None:
+            day = 0
+        if minute is None:
+            minute = 0
 
         offset = datetime.timedelta(days=day, hours=hour, minutes=minute)
         currtime = self.fetchSystemTime()
-        currtime = currtime - offset
-        utcTime = self.aestToUTC(currtime)+"Z"
-        print(utcTime)
-        cursor = repo.findAfterTime(utcTime)
+        currtime = (currtime - offset).isoformat()
+        print(currtime)
+        cursor = repo.findAfterTime(currtime)
         return list(cursor), None
-
 
 
 class ServerRequest:
@@ -152,6 +255,7 @@ class ServerRequest:
     def __init__(self, portnumber):
         self.rq = "http://localhost:"+str(portnumber)
         self.portnumber = portnumber
+        self.p = PARAMS()
 
     def getRequest(self):
         request = self.rq
@@ -173,6 +277,8 @@ class ServerRequest:
         self.rq+="&"
         return self
 
+    def Date(self,date):
+        self.rq+=(PARAMS.START_DATETIME+"="+str(date))
     def Day(self,day):
         self.rq+=(PARAMS.DAY+"="+str(day))
         return self
@@ -199,6 +305,30 @@ class ServerRequest:
             self.Market(market)
 
         return self.getRequest()
+
+    def buildFindInBetweenRequest(self,market,s_year,s_month,s_day,to_day,to_hour):
+
+        self.Service((ServerService.FindInBetween))
+        self.Query()
+
+        if (market is None):
+            raise Exception("Market cannot be None")
+        else:
+            self.Market(market)
+
+        date = self.p.constructStartDate(s_year,s_month,s_day)
+        self.AND()
+        self.Date(date)
+
+        if(to_day is not None):
+            self.AND()
+            self.Day(to_day)
+        if(to_hour is not None):
+            self.AND()
+            self.Hour(to_hour)
+
+        return self.getRequest()
+
 
 
     '''
@@ -255,5 +385,13 @@ if __name__ == '__main__':
         print(response)
     '''
 
+    request = ServerRequest(ServerInfo.PORT_NUMBER)
+    r = request.buildFindInBetweenRequest("btcaud",2018,1,7,1,2)
+    print(r)
+
+    #p = PARAMS()
+    #string= p.constructStartDate(1997,1,6,3,11)
+    #print(string)
+    #print(p.stripDatesToDateTime(string))
     run()
 

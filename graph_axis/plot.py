@@ -120,7 +120,11 @@ class BarGraph(Graph):
 
             x, y = self.dataParser[k](data)
 
-            v = pg.BarGraphItem(x=x, height=y, width=0.4, brush=self.plots_color[k])
+            if(len(x)>1):
+                width = x[1]-x[0]
+
+            width = 0.4*width
+            v = pg.BarGraphItem(x=x, height=y, width=width, brush=self.plots_color[k])
             self.plots[k] = v
             self.graph.addItem(v)
 

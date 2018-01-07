@@ -1,3 +1,11 @@
+
+import sys
+
+sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+print(sys.path)
+
+
+
 from pymongo import MongoClient
 import urllib.request
 import urllib.error
@@ -5,10 +13,9 @@ import json
 import threading
 import time
 import socket
-from builders.acx_builder import AcxApiBuilder
-from exchange.acx_exchange import AcxExchange
 from repository.acx_repo import AcxDB
-
+from builders.acx_builder import AcxApiBuilder
+import datetime
 
 
 API = 'https://acx.io:443//api/v2/'
@@ -111,9 +118,21 @@ class DataFetcherThread(threading.Thread):
 
             repo.insert(trades)
 
+    def processData(self,data):
+        for elem in data:
+            if elem['created_at'][-1] == "Z":
+                string = elem['created_at'][:-4]
+
+                format = '%Y-%m-%dT%H:%M'
+                d = datetime.datetime.strptime(string, format) + datetime.timedelta(hours=11)
+                d = d.isoformat() + "+11:00"
+                elem['created_at'] = d
+        return data
+
     def run(self):
         while True:
             for i in self.markets:
+                time.sleep(12)
                 print("Fetching for Market: "+ i)
                 trades = self.dataFetcher.fetchTrades(100, i, lastTradeID=self.cryptoLastID[i])
                 if (trades is None or len(trades) == 0):
@@ -121,8 +140,8 @@ class DataFetcherThread(threading.Thread):
                     continue
                 #self.newData.emit(trades, i)
                 print("inserting data...")
+                self.processData(trades)
                 self.insertData(trades,i)
-                time.sleep(12)
 
 
 
@@ -131,6 +150,10 @@ if __name__ == '__main__':
     fetcher = DataFetcherThread()
     fetcher.initialise()
     fetcher.start()
+    #data = [{"id": 5660294, "price": "21700.0", "volume": "0.005", "funds": "108.5", "market": "btcaud",
+    # "created_at": "2018-01-06T00:28:50Z", "trend": "up", "side": 'null'}]
 
-    import signal
-    signal.signal(signal.SIGALRM)
+    #fetcher.processData(data)
+    #print(data)
+
+

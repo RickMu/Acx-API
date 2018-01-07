@@ -58,6 +58,8 @@ class pyQtTimeGraphWrapper():
 
     def update(self, tradesDF, market):
         # getData()
+
+
         print("plotting")
         for p in self.graphs:
             p.plot(tradesDF)
@@ -66,6 +68,10 @@ class pyQtTimeGraphWrapper():
 
         for t in self.texts:
             t.setHtml(tradesDF)
+
+        print("__________________________")
+        print(tradesDF)
+        print((tradesDF.groupby('time').sum()))
 
     def setMarket(self,market):
         self.client.setMarket(market)
@@ -83,41 +89,41 @@ if __name__ == "__main__":
     from data_parser.parser import *
     acx = AcxExchange()
 
-    app = pyQtTimeGraphWrapper(acx,6,3)
+    app = pyQtTimeGraphWrapper(acx,100,3)
     app.setMarket(AcxExchange.Market.BITCOIN)
 
     g1= Graph(name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")
-    app.addGraph(g1,0,0,addLabel=True)
+    app.addGraph(g1,0,0,2,2,addLabel=True)
 
     g2= Graph(name = "StdDev Graph")
     g2.addPlot(parseStdDev,"StdDevGraph")
-    app.addGraph(g2, 1, 0, addLabel=True)
+    app.addGraph(g2, 2, 0,2,2, addLabel=True)
 
     g3 = Graph(name="Volume Graph")
     g3.addPlot(parseVolume, "Volume Graph")
-    app.addGraph(g3, 2, 0, addLabel=True)
+    app.addGraph(g3, 4, 0,2,2, addLabel=True)
 
     b1 = BarGraph(name="Bar Percentage Graph")
     b1.addPlot(priceIntervalVolumePercentage,"Bar Percentage")
-    app.addGraph(b1,3,0,addLabel=True)
+    app.addGraph(b1,6,0,2,2,addLabel=True)
 
     b2 = BarGraph(name = "Bar Gain/Loss Graph")
     b2.addPlot(priceIntervalGainLoss, "Bar Percentage")
-    app.addGraph(b2, 4, 0, addLabel=True)
+    app.addGraph(b2, 8, 0,2,2, addLabel=True)
 
     t1 = Text(txtParserAvgPrice,CommonStyle.CenterText,"Avg Price",pos='left')
-    app.addText(t1,5,0)
+    app.addText(t1,10,0)
 
     t2 = Text(txtParserVolumeSum, CommonStyle.CenterText,"Total Volume",)
-    app.addText(t2,5,0)
+    app.addText(t2,10,0)
     t2 = Text(txtParserCashSum, CommonStyle.CenterText, "Total Cash", pos='right')
-    app.addText(t2, 5, 0)
+    app.addText(t2, 10, 0)
 
     t2 = Text(txtParserPriceVolumeProduct, CommonStyle.CenterText,"Price Volume Product", pos ='left')
-    app.addText(t2, 6, 0)
+    app.addText(t2, 11, 0)
 
     t2 = Text(txtParserCashDifference, CommonStyle.CenterText, "Price Volume Product")
-    app.addText(t2, 6, 0)
+    app.addText(t2, 11, 0)
 
     app.start()

@@ -116,13 +116,22 @@ class MongoRepo(Repository):
     def findAfterTime(self, time):
         return self.cryptocoin.find({'created_at': {'$gt': time}},{"_id":0})
 
+    def findInBetweenTime(self,top_limit, bottom_limit):
+
+        return self.cryptocoin.find({'created_at': {'$gt': bottom_limit}}, projection={"_id": 0})
+
+    def update(self,id, cols):
+        self.cryptocoin.update({'id': id}, {"$set": cols})
+
+
 '''
 Tests of the above operations should be done over here
 '''
 if __name__ == "__main__":
     db = AcxDB()
     #cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findAfterTime("2017-12-31T09:38:27Z")
-    cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findLastTrade()
+    #cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findLastTrade()
+    cursor=db.getRepository(AcxExchange.Market.BITCOIN)[0].findInBetweenTime("2017-12-28T00:00:00",'2017-12-26T22:00:00')
     for i in cursor:
         print(i)
 
