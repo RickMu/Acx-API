@@ -1,4 +1,6 @@
-
+import sys
+sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+print(sys.path)
 
 
 import pyqtgraph as pg
@@ -39,6 +41,10 @@ class pyQtTimeGraphWrapper():
 
         self.graphs.append(g)
         self.win.addItem(g.graph,row=row, col =col,rowspan=rowspan, colspan=colspan)
+
+        if g.buttons is not None:
+            for i in range(len(g.buttons)):
+                self.win.addItem(g.buttons[i],row=row,col=col+1+i)
 
         if (addLabel):
             label = pg.LabelItem(justify='right')
@@ -123,7 +129,11 @@ if __name__ == "__main__":
     t2 = Text(txtParserPriceVolumeProduct, CommonStyle.CenterText,"Price Volume Product", pos ='left')
     app.addText(t2, 11, 0)
 
-    t2 = Text(txtParserCashDifference, CommonStyle.CenterText, "Price Volume Product")
+    t2 = Text(txtParserCashDifference, CommonStyle.CenterText, "Gain/Loss")
     app.addText(t2, 11, 0)
+    t2 = Text(txtParserGainLossPerVolume, CommonStyle.CenterText, "Gain/Loss", pos = 'right')
+    app.addText(t2, 11, 0)
+
+
 
     app.start()

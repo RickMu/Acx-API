@@ -26,15 +26,19 @@ class Service:
     Depth = "Depth"
     SystemTime = "systime"
 
-
-class AcxDataFetcher():
-
-    def __init__(self):
-        self.apiBuilder  = AcxApiBuilder()
-
+class fetcher:
     def loadJSON(self,url):
         try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.80 Safari/537.36'
+            }
+
+            #handler = urllib.request.ProxyHandler({"http":'79.137.42.124:3128'})
+            #opener = urllib.request.build_opener(handler)
+            #urllib.request.install_opener(opener)
+            #req = urllib.request.Request(url,headers= headers)
             response = urllib.request.urlopen(url,timeout=5)
+
             data = json.load(response)
             return data
         except socket.timeout as timeout:
@@ -49,6 +53,13 @@ class AcxDataFetcher():
             return None
 
 
+
+class AcxDataFetcher(fetcher):
+
+    def __init__(self):
+        self.apiBuilder  = AcxApiBuilder()
+
+
     def fetchMarkets(self):
         tickersUrl = self.apiBuilder.service(Service.Tickers).getAPI()
         tickers = self.loadJSON(tickersUrl)
@@ -57,8 +68,8 @@ class AcxDataFetcher():
         markets= {}
         for market in tickers:
             markets[market]=1
-
         print(markets)
+
         return markets
 
     def fetchTrades(self, limit, market, lastTradeID = None):
@@ -70,6 +81,7 @@ class AcxDataFetcher():
             tradesUrl = self.apiBuilder.service(Service.Trade).market(market).AND().fromID(lastTradeID).getAPI()
         print(tradesUrl)
         trades = self.loadJSON(tradesUrl)
+
         return trades
 
 

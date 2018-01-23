@@ -118,7 +118,7 @@ class MongoRepo(Repository):
 
     def findInBetweenTime(self,top_limit, bottom_limit):
 
-        return self.cryptocoin.find({'created_at': {'$gt': bottom_limit}}, projection={"_id": 0})
+        return self.cryptocoin.find({'created_at': {'$gt': bottom_limit, "$lt":top_limit}}, projection={"_id": 0})
 
     def update(self,id, cols):
         self.cryptocoin.update({'id': id}, {"$set": cols})

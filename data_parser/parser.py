@@ -4,9 +4,62 @@ import time
 import datetime as dt
 
 
-class TimeFormat():
+
+
+
+
+class TimeFormat:
     TRADES_TIME_FORMAT = "%Y-%m-%dT%H:%M"
 
+    def makeTimeIntervals(tradesDF, interval='min',time_interval= 5):
+        x = tradesDF['time'].values
+
+        x = [dt.datetime.strptime(i, TimeFormat.TRADES_TIME_FORMAT) for i in x]
+
+        if (interval == 'min'):
+            for i in range(len(x)):
+                c = int(x[i].minute) // time_interval + 1
+
+                x[i] = x[i].replace(minute=(c * time_interval - 1))
+        elif (interval == 'hour'):
+            for i in range(len(x)):
+
+                c = int(x[i].hour) // time_interval +1
+                x[i] = x[i].replace(hour=(c*time_interval - 1))
+                x[i] = x[i].replace(minute=(59))
+
+        elif (interval == 'day'):
+            for i in range(len(x)):
+                c = int(x[i].day) //time_interval + 1
+
+                x[i] = x[i].replace(day=(c*time_interval-1))
+                x[i] = x[i].replace(hour=24).replace(minute=59)
+
+        x = [i.strftime( TimeFormat.TRADES_TIME_FORMAT) for i in x]
+        tradesDF['interval'] = x
+
+        return tradesDF
+
+
+def parseVolume(tradesDF):
+    if ('interval' in tradesDF):
+        d = dict((tradesDF.groupby('interval').sum())['volume'])
+    else:
+        d = dict((tradesDF.groupby('time').sum())['volume'])
+    print(d)
+
+    x = []
+    y = []
+    for k, v in d.items():
+        x.append(k)
+        y.append(v)
+
+        # if('interval' not in tradesDF):
+        #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
+    x = datetimeToTimeStamp(x)
+
+    print(dt.datetime.fromtimestamp(x[0]))
+    return x, y
 
 
 def datetimeToTimeStamp(d):
@@ -73,6 +126,7 @@ def parseStdDev( data):
 
 def parseVolume(data):
     parse(data)
+
     if ('interval' in data):
         d = dict((data.groupby('interval').sum())['volume'])
     else:
@@ -149,6 +203,13 @@ def txtParserCashDifference(data):
 
     return proposedAmount-actualAmount
 
+def txtParserGainLossPerVolume(data):
+    vol = txtParserVolumeSum(data)
+    diff = txtParserCashDifference(data)
+
+    return diff/vol
+
+
 
 def countDigits(num):
     n = 0
@@ -157,32 +218,36 @@ def countDigits(num):
         n+=1
     return n
 
-def priceIntervalVolumePercentage(data):
+def priceVolume(data, interval = None):
+
     min = data['price'].min()
     max = data['price'].max()
 
-    totalVolume = txtParserVolumeSum(data)
+    if interval is None:
+        digits = countDigits(max)
+        digits -= 1
+        interval = 0.1
+        for i in range(digits):
+            interval *= 10
+        interval *= 0.3
 
-
-    digits = countDigits(max)
-    digits -=1
-    interval = 0.1
-    for i in range(digits):
-        interval*=10
-
-    interval *=0.3
-    min = (min//interval)*interval
-    max = (max//interval)*interval
+    min = (min // interval) * interval
 
     prices = data['price'].values
-    cats =[]
+    cats = []
     for p in prices:
-        diff = p-min
-        cat = min+ (diff//interval)*interval
+        diff = p - min
+        cat = min + (diff // interval) * interval
         cats.append(cat)
     data['PriceInterval'] = cats
     d = dict(data.groupby('PriceInterval').sum()['volume'])
+    return d
 
+
+def priceIntervalVolumePercentage(data):
+
+    totalVolume = txtParserVolumeSum(data)
+    d = priceVolume(data)
     x= []
     y=[]
     for k,v in d.items():

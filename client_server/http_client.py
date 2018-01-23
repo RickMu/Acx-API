@@ -33,7 +33,9 @@ class HttpClient(pg.QtCore.QThread):
             raise Exception("Market cannot be none")
 
         k = self.market
-        request = self.requestBuilder.buildAfterTimeRequest(k, day=2,hour=0)
+        request = self.requestBuilder.buildAfterTimeRequest(k, day=0, hour=2)
+        #request = self.requestBuilder.buildFindInBetweenRequest(k,2018,1,17,1)
+        print(request)
         data = loadJSON(request)
         m = self.acx.coins[k]
         m.addTrades(data)
@@ -48,7 +50,7 @@ if __name__=="__main__":
 
     '''
     requestBuilder = ServerRequest(ServerInfo.PORT_NUMBER)
-    request = requestBuilder.buildAfterTimeRequest("btcaud",day=1)
+    request = requestBuilder.buildAfterTimeRequest("btcaud",day=2)
 
     def test(data, market):
         print(data)

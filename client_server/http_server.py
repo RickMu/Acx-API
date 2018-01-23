@@ -4,7 +4,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-from builders.acx_builder import AcxApiBuilder,Service
+from builders.acx_builder import AcxApiBuilder
 from repository.acx_repo import AcxDB, MongoRepo
 from client_server.errors import ServerError
 import datetime
@@ -151,7 +151,7 @@ class ServerParser:
     def fetchSystemTime(self):
         api = AcxApiBuilder()
 
-        systemTimeUrl = api.service(Service.SystemTime).getAPI()
+        systemTimeUrl = api.service(AcxApiBuilder.Service.SystemTime).getAPI()
 
         sysTime = loadJSON(systemTimeUrl)
         if(sysTime is not None):
@@ -306,7 +306,7 @@ class ServerRequest:
 
         return self.getRequest()
 
-    def buildFindInBetweenRequest(self,market,s_year,s_month,s_day,to_day,to_hour):
+    def buildFindInBetweenRequest(self,market,s_year,s_month,s_day,to_day,to_hour=0):
 
         self.Service((ServerService.FindInBetween))
         self.Query()
@@ -386,7 +386,7 @@ if __name__ == '__main__':
     '''
 
     request = ServerRequest(ServerInfo.PORT_NUMBER)
-    r = request.buildFindInBetweenRequest("btcaud",2018,1,7,1,2)
+    r = request.buildFindInBetweenRequest("btcaud",2017,12,29,7)
     print(r)
 
     #p = PARAMS()
