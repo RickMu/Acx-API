@@ -132,8 +132,7 @@ if __name__ == "__main__":
     t2 = Text(txtParserCashDifference, CommonStyle.CenterText, "Gain/Loss")
     app.addText(t2, 11, 0)
     t2 = Text(txtParserGainLossPerVolume, CommonStyle.CenterText, "Gain/Loss", pos = 'right')
-    app.addText(t2, 11, 0)
-
+    app.addText(t2, 11, 0) 
 
 
     app.start()

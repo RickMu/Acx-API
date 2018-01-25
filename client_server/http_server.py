@@ -16,7 +16,7 @@ import json
 def loadJSON(url):
     try:
         with urllib.request.urlopen(url, timeout=3) as response:
-            
+
             data = json.load(response)
         return data
     except urllib.error.URLError as error:
