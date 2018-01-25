@@ -1,4 +1,5 @@
-
+import sys
+sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.request
 import urllib.parse
@@ -15,7 +16,8 @@ import json
 def loadJSON(url):
     try:
         with urllib.request.urlopen(url, timeout=3) as response:
-           data = json.load(response)
+            
+            data = json.load(response)
         return data
     except urllib.error.URLError as error:
         print(error)
@@ -251,9 +253,9 @@ class ServerParser:
 
 
 class ServerRequest:
-
+    DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'
     def __init__(self, portnumber):
-        self.rq = "http://localhost:"+str(portnumber)
+        self.rq =ServerRequest.DNS #+str(portnumber)
         self.portnumber = portnumber
         self.p = PARAMS()
 
@@ -263,7 +265,7 @@ class ServerRequest:
         return request
 
     def clear(self):
-        self.rq = "localhost:"+str(self.portnumber)
+        self.rq = ServerRequest.DNS#+str(self.portnumber)
 
     def Service(self,service):
         self.rq +=("/"+service)

@@ -59,8 +59,7 @@ class Graph():
         dataItem = self.graph.plot()
         self.addStandardButtons()
 
-        rgn = pg.LinearRegionItem(bounds = [0.3, 0.35])
-        self.graph.addItem(rgn)
+
 
         if(name is None):
             name = self.plot_count
@@ -80,6 +79,7 @@ class Graph():
             x,y = self.dataParser[k](data)
             xy = {"x":x,"y":y}
             v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
+
 
 
     def addStandardButtons(self):
@@ -164,10 +164,8 @@ class RegionSelectionGraph(Graph):
         self.label = None
 
     def addPlot(self, parser, name=None, color='g'):
-        dataItem = self.graph.plot()
-        rgn = pg.LinearRegionItem([0.3, 0.5])
-        self.graph.addItem(rgn)
 
+        dataItem = self.graph.plot()
         if (name is None):
             name = self.plot_count
 
@@ -185,6 +183,9 @@ class RegionSelectionGraph(Graph):
             x, y = self.dataParser[k](data)
             xy = {"x": x, "y": y}
             v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
+
+        rgn = pg.LinearRegionItem([0.3, 0.5])
+        self.graph.addItem(rgn)
 
 
 

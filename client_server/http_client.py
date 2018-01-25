@@ -33,7 +33,7 @@ class HttpClient(pg.QtCore.QThread):
             raise Exception("Market cannot be none")
 
         k = self.market
-        request = self.requestBuilder.buildAfterTimeRequest(k, day=0, hour=2)
+        request = self.requestBuilder.buildAfterTimeRequest(k, day=1, hour=2)
         #request = self.requestBuilder.buildFindInBetweenRequest(k,2018,1,17,1)
         print(request)
         data = loadJSON(request)
