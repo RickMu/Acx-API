@@ -1,5 +1,60 @@
 
 
+class GDXApiBuilder:
+    API = "https://api.gdax.com"
+
+
+    class Service:
+        TRADES = "trades"
+
+
+
+    def __init__(self):
+        self.api = GDXApiBuilder.API
+
+    def clear(self):
+        self.api = GDXApiBuilder.API
+        return self
+
+    def getAPI(self):
+        api = self.api
+        self.clear()
+        return api
+
+    def products(self):
+        self.api+="/products"
+        return self
+
+    def currency(self,ticker):
+        self.api += "/products/"+ticker
+        return self
+
+    def limit(self,lim):
+        self.api +="limit="+str(lim)
+        return self
+
+    def service(self,service):
+        self.api += "/"+service
+        return self
+
+    def PARAMS(self):
+        self.api+= "?"
+        return self
+
+    def before(self, id):
+        self.api += "before=" +str(id)
+        return self
+
+
+    def after(self, id):
+        self.api += "after=" +str(id)
+        return self
+
+
+
+
+
+
 
 
 
@@ -107,4 +162,10 @@ if __name__ == "__main__":
     import json
     polo = PoloniexApiBuilder()
     api = polo.returnTradeHistoryApi("BTC_NXT",111123,333133)
+
+    gdxApi = GDXApiBuilder()
+
+    api = gdxApi.currency("BTC-USD").service(GDXApiBuilder.Service.TRADES).PARAMS().before(34715243).getAPI()
+
+
     print(api)

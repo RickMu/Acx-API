@@ -13,9 +13,9 @@ import json
 import threading
 import time
 import socket
-from repository.acx_repo import AcxDB
-from builders.acx_builder import AcxApiBuilder
+from repository.acx_repo import *
 import datetime
+from builder_clients.api_clients import *
 
 
 API = 'https://acx.io:443//api/v2/'
@@ -26,64 +26,6 @@ class Service:
     Depth = "Depth"
     SystemTime = "systime"
 
-class fetcher:
-    def loadJSON(self,url):
-        try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.80 Safari/537.36'
-            }
-
-            #handler = urllib.request.ProxyHandler({"http":'79.137.42.124:3128'})
-            #opener = urllib.request.build_opener(handler)
-            #urllib.request.install_opener(opener)
-            #req = urllib.request.Request(url,headers= headers)
-            response = urllib.request.urlopen(url,timeout=5)
-
-            data = json.load(response)
-            return data
-        except socket.timeout as timeout:
-            print("timed out...")
-            print(timeout)
-            return None
-        except urllib.error.HTTPError as error:
-            print(error)
-            return None
-        except urllib.error.URLError as error:
-            print(error)
-            return None
-
-
-
-class AcxDataFetcher(fetcher):
-
-    def __init__(self):
-        self.apiBuilder  = AcxApiBuilder()
-
-
-    def fetchMarkets(self):
-        tickersUrl = self.apiBuilder.service(Service.Tickers).getAPI()
-        tickers = self.loadJSON(tickersUrl)
-
-        print(tickers)
-        markets= {}
-        for market in tickers:
-            markets[market]=1
-        print(markets)
-
-        return markets
-
-    def fetchTrades(self, limit, market, lastTradeID = None):
-        # Later I think should limit by using DateTime rather then limit
-
-        if (lastTradeID is None):
-            tradesUrl = self.apiBuilder.service(Service.Trade).market(market).AND().limit(limit).getAPI()
-        else:
-            tradesUrl = self.apiBuilder.service(Service.Trade).market(market).AND().fromID(lastTradeID).getAPI()
-        print(tradesUrl)
-        trades = self.loadJSON(tradesUrl)
-
-        return trades
-
 
 
 class DataFetcherThread(threading.Thread):
@@ -91,12 +33,31 @@ class DataFetcherThread(threading.Thread):
     def __init__(self):
         super().__init__()
         self.conn = MongoClient('localhost', 27017)
-        self.dataFetcher = AcxDataFetcher()
-        self.markets = {}
-        self.cryptoLastID = {}
-        self.db =AcxDB()
+
+        self.clients =[
+            AcxApiClient(),
+            GDXApiClient()
+        ]
+        self.tickers = {
+            self.clients[0]:[],
+            self.clients[1]:[]
+        }
+        self.cryptoLastID = {
+            self.clients[0]: {},
+            self.clients[1]: {}
+        }
+        self.dbs ={
+            self.clients[0]: AcxDB(),
+            self.clients[1]: GdxDB()
+        }
+
     def initialise(self):
-        self.fetchMarkets()
+        for c in self.clients:
+            tickers = c.fetchTickers()
+            for t in tickers:
+                self.tickers[c].append(t)
+        print(self.tickers)
+
         self.findLastIDs()
 
     def fetchMarkets(self):
@@ -108,25 +69,31 @@ class DataFetcherThread(threading.Thread):
 
 
     def findLastIDs(self):
-        for market in self.markets.keys():
-            if market in self.db.getRepo.keys():
-                repo, error = self.db.getRepository(market)
+        for c in self.clients:
+            for t in self.tickers[c]:
+                if t in self.dbs[c].getRepo.keys():
+                    repo, error = self.dbs[c].getRepository(t)
 
-                if(error is not None):
-                    raise Exception(error.getErrorMsg())
+                    if(error is not None):
+                        raise Exception(error.getErrorMsg())
 
-                cursor = repo.findLastTrade()
-                i = next(cursor, None)
-                if( i is not None):
-                    self.cryptoLastID[market] = i['id']
+                    cursor = repo.findLastTrade()
+                    i = next(cursor, None)
+                    if( i is not None):
+                        self.cryptoLastID[c][t] = i['id']
+                    else:
+                        self.cryptoLastID[c][t] = None
 
-    def insertData(self, trades, market):
+
+
+    def insertData(self, client, trades, market):
         print("Inserting data for market: " + market)
-        if (market in self.db.getRepo.keys()):
-            self.cryptoLastID[market] = trades[0]['id']
-            repo ,error = self.db.getRepository(market)
+        if (market in self.dbs[client].getRepo.keys()):
+            self.cryptoLastID[client][market] = trades[0]['id']
+            repo ,error = self.dbs[client].getRepository(market)
             if( error is not None):
                 raise Exception(error.getErrorMsg())
+
 
             repo.insert(trades)
 
@@ -143,17 +110,26 @@ class DataFetcherThread(threading.Thread):
 
     def run(self):
         while True:
-            for i in self.markets:
-                time.sleep(12)
-                print("Fetching for Market: "+ i)
-                trades = self.dataFetcher.fetchTrades(100, i, lastTradeID=self.cryptoLastID[i])
-                if (trades is None or len(trades) == 0):
-                    print("No trades for Market: "+ i)
-                    continue
-                #self.newData.emit(trades, i)
-                print("inserting data...")
-                self.processData(trades)
-                self.insertData(trades,i)
+            for c in self.clients:
+                for t in self.tickers[c]:
+                    time.sleep(5)
+                    print("Fetching for Market: "+ t)
+
+                    if t not in self.cryptoLastID[c].keys():
+                        continue
+
+                    if self.cryptoLastID[c][t] is not None:
+                        trades = c.fetchTrades(t,self.cryptoLastID[c][t])
+                    else:
+                        trades = c.startFetchTrades(t,100)
+
+                    if (trades is None or len(trades) == 0):
+                        print("No trades for Market: "+ t)
+                        continue
+                    #self.newData.emit(trades, i)
+                    print("inserting data...")
+                    #self.processData(trades)
+                    self.insertData(c, trades,t)
 
 
 

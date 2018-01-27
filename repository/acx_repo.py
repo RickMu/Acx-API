@@ -1,16 +1,16 @@
 
 from pymongo import MongoClient, errors
 from abc import abstractmethod
-from exchange.acx_exchange import AcxExchange
+from exchange.acx_exchange import *
 from Error import DataBaseError
+
+class DB:
+    db = MongoClient('localhost', 27017)
 
 
 class AcxDB():
-
-    db = None
-
     def __init__(self):
-        self.conn = MongoClient('localhost', 27017)
+        self.conn = DB.db.Acx
         self.BitcoinRepo = None
         self.EtherRepo = None
         self.HSRRepo = None
@@ -21,13 +21,6 @@ class AcxDB():
             AcxExchange.Market.ETHER:self.getEtherRepo,
             AcxExchange.Market.HSR:self.getHSRRepo
         }
-
-    @staticmethod
-    def getAcxDB():
-        if AcxDB.db is None:
-            AcxDB.db = AcxDB()
-        return AcxDB.db
-
 
     def getRepository(self,market):
 
@@ -40,21 +33,64 @@ class AcxDB():
 
     def getBitcoinRepo(self):
         if(self.BitcoinRepo is None):
-            self.BitcoinRepo = MongoRepo(AcxExchange.Market.BITCOIN,self.conn)
+            self.BitcoinRepo = MongoRepo(self.conn.bitcoin)
         return self.BitcoinRepo
     def getEtherRepo(self):
         if(self.EtherRepo is None):
-            self.EtherRepo = MongoRepo(AcxExchange.Market.ETHER,self.conn)
+            self.EtherRepo = MongoRepo(self.conn.ether)
         return self.EtherRepo
     def getHSRRepo(self):
         if(self.HSRRepo is None):
-            self.HSRRepo = MongoRepo(AcxExchange.Market.HSR,self.conn)
+            self.HSRRepo = MongoRepo(self.conn.hsr)
         return self.HSRRepo
     def getBCHRepo(self):
         if(self.BCHRepo is None):
-            self.BCHRepo = MongoRepo(AcxExchange.Market.BCH,self.conn)
+            self.BCHRepo = MongoRepo(self.conn.bch)
         return self.BCHRepo
 
+
+class GdxDB():
+    def __init__(self):
+        self.conn = DB.db.Gdx
+        self.BitcoinRepo = None
+        self.EtherRepo = None
+        self.BCHRepo = None
+        self.LTCRepo = None
+        self.getRepo = {
+            GdxExchange.Market.BITCOIN: self.getBitcoinRepo,
+            GdxExchange.Market.BCH: self.getBCHRepo,
+            GdxExchange.Market.ETHER: self.getEtherRepo,
+            GdxExchange.Market.LTC: self.getLTCRepo
+        }
+
+    def getRepository(self, market):
+
+        if market not in self.getRepo:
+            error = DataBaseError("Market: " + market + " not in repository"
+                                  + " " + str(self.getRepo.keys()))
+            return None, error
+
+        return self.getRepo[market](), None
+
+    def getBitcoinRepo(self):
+        if (self.BitcoinRepo is None):
+            self.BitcoinRepo = MongoRepo(self.conn.bitcoin)
+        return self.BitcoinRepo
+
+    def getEtherRepo(self):
+        if (self.EtherRepo is None):
+            self.EtherRepo = MongoRepo(self.conn.ether)
+        return self.EtherRepo
+
+    def getLTCRepo(self):
+        if (self.LTCRepo is None):
+            self.LTCRepo = MongoRepo(self.conn.ltc)
+        return self.LTCRepo
+
+    def getBCHRepo(self):
+        if (self.BCHRepo is None):
+            self.BCHRepo = MongoRepo(self.conn.bch)
+        return self.BCHRepo
 
 
 class Repository():
@@ -70,19 +106,10 @@ class Repository():
         return
 
 
+
 class MongoRepo(Repository):
-
-    def __init__(self, type, conn):
-        self.db = conn.Acx
-        if(type == AcxExchange.Market.BITCOIN):
-            self.cryptocoin = self.db.bitcoin
-        elif(type== AcxExchange.Market.ETHER):
-            self.cryptocoin = self.db.ether
-        elif(type==AcxExchange.Market.HSR):
-            self.cryptocoin = self.db.hsr
-        elif(type== AcxExchange.Market.BCH):
-            self.cryptocoin = self.db.bch
-
+    def __init__(self, collection):
+        self.cryptocoin = collection
     def insert(self, instance):
         super().insert(instance)
         try:

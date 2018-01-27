@@ -16,3 +16,17 @@ class AcxExchange:
         }
 
 
+class GdxExchange:
+    class Market:
+        BITCOIN = 'BTC-USD'
+        ETHER = 'ETH-USD'
+        LTC =  'LTC-USD'
+        BCH = 'BCH-USD'
+
+    def __init__(self):
+        self.coins ={
+            GdxExchange.Market.BITCOIN: Coin( GdxExchange.Market.BITCOIN),
+            GdxExchange.Market.ETHER : Coin(GdxExchange.Market.ETHER),
+            GdxExchange.Market.LTC: Coin(GdxExchange.Market.LTC),
+            GdxExchange.Market.BCH: Coin(GdxExchange.Market.BCH)
+        }

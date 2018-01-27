@@ -28,7 +28,6 @@ class DateAxis(pg.AxisItem):
         return strns
 
 
-
 class Graph():
 
     def __init__(self,name=None, title=None, axisItem = None):
@@ -39,7 +38,7 @@ class Graph():
         self.dataParser= {}
         if axisItem is None:
             axisItem = DateAxis(orientation='bottom')
-            axisItem.setTickSpacing(3600, 1800)
+            #axisItem.setTickSpacing(3600, 1800)
         self.bottomAxis = axisItem
         self.graph = pg.PlotItem(name=name,title=title,axisItems={'bottom': axisItem})
 

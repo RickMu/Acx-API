@@ -5,7 +5,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-from builders.acx_builder import AcxApiBuilder
+from builder_clients.api_builders import *
 from repository.acx_repo import AcxDB, MongoRepo
 from client_server.errors import ServerError
 import datetime
@@ -16,8 +16,8 @@ import json
 def loadJSON(url):
     try:
         with urllib.request.urlopen(url, timeout=3) as response:
-
-            data = json.load(response)
+            response = response.read().decode('utf-8')
+            data = json.loads(response)
         return data
     except urllib.error.URLError as error:
         print(error)
@@ -131,7 +131,7 @@ class ServerService:
 
 class ServerParser:
     def __init__(self):
-        self.db = AcxDB.getAcxDB()
+        self.db = AcxDB()
         self.requestMapper = {
             ServerService.FindAll:self.parseFindAll,
             ServerService.FindAfter:self.parseFindAfterTime,
