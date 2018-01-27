@@ -19,11 +19,11 @@ def loadJSON(url):
 
 class HttpClient(pg.QtCore.QThread):
     newData = pg.QtCore.Signal(object,str)
-    def __init__(self, Acx):
+    def __init__(self, db):
         super().__init__()
         self.market = None
-        self.requestBuilder = ServerRequest(ServerInfo.PORT_NUMBER)
-        self.acx = Acx
+        self.requestBuilder = ServerRequest()
+        self.db = db
     def setMarket(self,market):
         self.market = market
 
@@ -33,11 +33,11 @@ class HttpClient(pg.QtCore.QThread):
             raise Exception("Market cannot be none")
 
         k = self.market
-        request = self.requestBuilder.buildAfterTimeRequest(k, day=1, hour=2)
+        request = self.requestBuilder.buildAfterTimeRequest(self.db,k, day=8, hour=6)
         #request = self.requestBuilder.buildFindInBetweenRequest(k,2018,1,17,1)
         print(request)
         data = loadJSON(request)
-        m = self.acx.coins[k]
+        m = self.db.coins[k]
         m.addTrades(data)
         trades = m.getAllTradesDF()
         self.newData.emit(trades, k)
@@ -55,10 +55,10 @@ if __name__=="__main__":
     def test(data, market):
         print(data)
         print(market)
-    from exchange.acx_exchange import AcxExchange
+    from exchange.exchange import AcxExchange
     acx =AcxExchange()
     client = HttpClient(acx)
-    client.addMarket(AcxExchange.Market.BITCOIN)
+    client.addMarket(AcxExchange.Ticker.BITCOIN)
     client.newData.connect(test)
     client.start()
 

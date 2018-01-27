@@ -244,7 +244,7 @@ def priceVolume(data, interval = None):
     return d
 
 
-def priceIntervalVolumePercentage(data):
+def barGraphPriceIntervalVolumePercentage(data):
 
     totalVolume = txtParserVolumeSum(data)
     d = priceVolume(data)
@@ -255,8 +255,8 @@ def priceIntervalVolumePercentage(data):
         y.append(v*100/totalVolume)
     return x,y
 
-def priceIntervalGainLoss(data):
-    x,y = priceIntervalVolumePercentage(data)
+def barGraphPriceIntervalGainLoss(data):
+    x,y = barGraphPriceIntervalVolumePercentage(data)
     totalVolume = txtParserVolumeSum(data)
     currPrice = txtParserLatestPrice(data)
     for i in range(len(y)):

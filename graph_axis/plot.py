@@ -77,6 +77,7 @@ class Graph():
             v.clear()
             x,y = self.dataParser[k](data)
             xy = {"x":x,"y":y}
+            print(xy)
             v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
 
 
@@ -223,6 +224,8 @@ class BarGraph(Graph):
             x, y = self.dataParser[k](data)
             if(len(x)>1):
                 width = x[1]-x[0]
+            else:
+                width = 1
             width = 0.4*width
             v = pg.BarGraphItem(x=x, height=y, width=width, brush=self.plots_color[k])
             self.plots[k] = v
