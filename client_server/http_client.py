@@ -49,7 +49,7 @@ if __name__=="__main__":
     Qt Thread only works when theres qt objects around
 
     '''
-    requestBuilder = ServerRequest(ServerInfo.PORT_NUMBER)
+    requestBuilder = ServerRequest()
     request = requestBuilder.buildAfterTimeRequest("btcaud",day=2)
 
     def test(data, market):

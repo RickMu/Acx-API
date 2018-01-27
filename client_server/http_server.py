@@ -59,6 +59,7 @@ class myHandler(BaseHTTPRequestHandler):
 
 class ServerInfo:
     PORT_NUMBER=8080
+    SERVER_PORT=80
 
 
 class PARAMS:
@@ -261,12 +262,12 @@ class ServerParser:
 
 
 class ServerRequest:
-    DNS = "http://localhost:"#'http://ec2-35-169-63-106.compute-1.amazonaws.com'
+    DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'#"http://localhost:"
 
     def __init__(self):
 
         self.portnumber = ServerInfo.PORT_NUMBER
-        self.rq = ServerRequest.DNS + str(self.portnumber) #+str(portnumber)
+        self.rq = ServerRequest.DNS  #+str(portnumber)
         self.p = PARAMS()
 
     def database(self,db):
@@ -381,10 +382,13 @@ class ServerRequest:
 
 def run():
 
+
     try:
         #Create a web server and define the handler to manage the
         #incoming request
-        server = HTTPServer(('localhost', ServerInfo.PORT_NUMBER), myHandler)
+        allhosts = '0.0.0.0'
+        localhost = 'localhost'
+        server = HTTPServer((allhosts, ServerInfo.SERVER_PORT), myHandler)
         print ('Started httpserver on port ' , ServerInfo.PORT_NUMBER)
 
         #Wait forever for incoming htto requests
