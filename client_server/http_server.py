@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+sys.path.append("/home/ec2-user/Acx-API")
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.request
 import urllib.parse
@@ -55,7 +55,7 @@ class myHandler(BaseHTTPRequestHandler):
 
 
 class ServerInfo:
-    PORT_NUMBER=8080
+    PORT_NUMBER=80
 
 
 class PARAMS:
@@ -363,7 +363,7 @@ def run():
     try:
         #Create a web server and define the handler to manage the
         #incoming request
-        server = HTTPServer(('localhost', ServerInfo.PORT_NUMBER), myHandler)
+        server = HTTPServer(('0.0.0.0', ServerInfo.PORT_NUMBER), myHandler)
         print ('Started httpserver on port ' , ServerInfo.PORT_NUMBER)
 
         #Wait forever for incoming htto requests
