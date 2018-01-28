@@ -81,10 +81,9 @@ def parse(data):
     return
 
 
-def parsePrice( data):
+def parsePrice(data):
 
     parse(data)
-
     if ('interval' in data):
         d = dict((data.groupby('interval').mean())['price'])
     else:
@@ -229,7 +228,7 @@ def priceVolume(data, interval = None):
         interval = 0.1
         for i in range(digits):
             interval *= 10
-        interval *= 0.3
+        interval *= 0.1
 
     min = (min // interval) * interval
 

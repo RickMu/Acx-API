@@ -41,6 +41,8 @@ class myHandler(BaseHTTPRequestHandler):
         service= path[2]
         param_dict = urllib.parse.parse_qs(parseResult.query)
 
+        print("params_dict: "+ str(param_dict))
+
         parser = ServerParser()
         response, error = parser.parseRequest(db, service, param_dict)
 
@@ -257,17 +259,20 @@ class ServerParser:
         currtime = self.fetchSystemTime()
         currtime = (currtime - offset).isoformat()
         print(currtime)
+
         cursor = repo.findAfterTime(currtime)
         return list(cursor), None
 
 
 class ServerRequest:
-    DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'#"http://localhost:"
+    DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'
+    #"http://localhost:"+str(ServerInfo.PORT_NUMBER)
+
 
     def __init__(self):
 
         self.portnumber = ServerInfo.PORT_NUMBER
-        self.rq = ServerRequest.DNS  #+str(portnumber)
+        self.rq = ServerRequest.DNS
         self.p = PARAMS()
 
     def database(self,db):
@@ -388,7 +393,7 @@ def run():
         #incoming request
         allhosts = '0.0.0.0'
         localhost = 'localhost'
-        server = HTTPServer((allhosts, ServerInfo.SERVER_PORT), myHandler)
+        server = HTTPServer((localhost, ServerInfo.PORT_NUMBER), myHandler)
         print ('Started httpserver on port ' , ServerInfo.PORT_NUMBER)
 
         #Wait forever for incoming htto requests

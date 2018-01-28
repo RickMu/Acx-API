@@ -3,6 +3,7 @@ import sys
 
 sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
 print(sys.path)
+import logging
 
 
 
@@ -19,6 +20,7 @@ from builder_clients.api_clients import *
 
 
 API = 'https://acx.io:443//api/v2/'
+logging.basicConfig(filename='./fetch.log', level=logging.DEBUG)
 
 class Service:
     Tickers = "Tickers"
@@ -88,6 +90,8 @@ class DataFetcherThread(threading.Thread):
 
     def insertData(self, client, trades, market):
         print("Inserting data for market: " + market)
+        logging.info("Inserting data for market: " + market)
+
         if (market in self.dbs[client].getRepo.keys()):
             self.cryptoLastID[client][market] = trades[0]['id']
             repo ,error = self.dbs[client].getRepository(market)
@@ -135,6 +139,13 @@ class DataFetcherThread(threading.Thread):
 
 
 if __name__ == '__main__':
+
+
+    logging.debug('This message should go to the log file')
+    logging.info('So should this')
+    logging.warning('And this, too')
+
+
     fetcher = DataFetcherThread()
     fetcher.initialise()
     fetcher.start()
