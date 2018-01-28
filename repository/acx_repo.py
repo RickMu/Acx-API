@@ -1,7 +1,7 @@
 
 from pymongo import MongoClient, errors
 from abc import abstractmethod
-from exchange.acx_exchange import *
+from exchange.exchange import *
 from Error import DataBaseError
 
 class DB:
@@ -16,10 +16,10 @@ class AcxDB():
         self.HSRRepo = None
         self.BCHRepo = None
         self.getRepo= {
-            AcxExchange.Market.BITCOIN: self.getBitcoinRepo,
-            AcxExchange.Market.BCH:self.getBCHRepo,
-            AcxExchange.Market.ETHER:self.getEtherRepo,
-            AcxExchange.Market.HSR:self.getHSRRepo
+            AcxExchange.Ticker.BITCOIN: self.getBitcoinRepo,
+            AcxExchange.Ticker.BCH:self.getBCHRepo,
+            AcxExchange.Ticker.ETHER:self.getEtherRepo,
+            AcxExchange.Ticker.HSR:self.getHSRRepo
         }
 
     def getRepository(self,market):
@@ -57,10 +57,10 @@ class GdxDB():
         self.BCHRepo = None
         self.LTCRepo = None
         self.getRepo = {
-            GdxExchange.Market.BITCOIN: self.getBitcoinRepo,
-            GdxExchange.Market.BCH: self.getBCHRepo,
-            GdxExchange.Market.ETHER: self.getEtherRepo,
-            GdxExchange.Market.LTC: self.getLTCRepo
+            GdxExchange.Ticker.BITCOIN: self.getBitcoinRepo,
+            GdxExchange.Ticker.BCH: self.getBCHRepo,
+            GdxExchange.Ticker.ETHER: self.getEtherRepo,
+            GdxExchange.Ticker.LTC: self.getLTCRepo
         }
 
     def getRepository(self, market):
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     db = AcxDB()
     #cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findAfterTime("2017-12-31T09:38:27Z")
     #cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findLastTrade()
-    cursor=db.getRepository(AcxExchange.Market.BITCOIN)[0].findInBetweenTime("2017-12-28T00:00:00",'2017-12-26T22:00:00')
+    cursor=db.getRepository(AcxExchange.Ticker.BITCOIN)[0].findInBetweenTime("2017-12-28T00:00:00", '2017-12-26T22:00:00')
     for i in cursor:
         print(i)
 

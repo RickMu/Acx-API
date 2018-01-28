@@ -10,13 +10,13 @@ from client_server.http_client import HttpClient
 
 class pyQtTimeGraphWrapper():
 
-    def __init__(self, Acx, rows, cols):
+    def __init__(self, db, rows, cols):
         self.win = pg.GraphicsWindow()
         self.win.setWindowTitle("pyQTGRAPH: Tryout")
         self.graphs = []
         self.texts = []
-        self.Acx = Acx
-        self.client = HttpClient(Acx)
+        self.db = db
+        self.client = HttpClient(db)
         self.max_row=rows
         self.max_col=cols
 
@@ -89,14 +89,15 @@ class pyQtTimeGraphWrapper():
 
 
 if __name__ == "__main__":
-    from exchange.acx_exchange import AcxExchange
+    from exchange.exchange import *
     from graph_axis.plot import Graph, BarGraph
     from graph_axis.text import Text, CommonStyle
     from data_parser.parser import *
     acx = AcxExchange()
+    gdx = GdxExchange()
 
-    app = pyQtTimeGraphWrapper(acx,100,3)
-    app.setMarket(AcxExchange.Market.BITCOIN)
+    app = pyQtTimeGraphWrapper(gdx,100,3)
+    app.setMarket(GdxExchange.Ticker.BITCOIN)
 
     g1= Graph(name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")
@@ -111,11 +112,11 @@ if __name__ == "__main__":
     app.addGraph(g3, 4, 0,2,2, addLabel=True)
 
     b1 = BarGraph(name="Bar Percentage Graph")
-    b1.addPlot(priceIntervalVolumePercentage,"Bar Percentage")
+    b1.addPlot(barGraphPriceIntervalVolumePercentage, "Bar Percentage")
     app.addGraph(b1,6,0,2,2,addLabel=True)
 
     b2 = BarGraph(name = "Bar Gain/Loss Graph")
-    b2.addPlot(priceIntervalGainLoss, "Bar Percentage")
+    b2.addPlot(barGraphPriceIntervalGainLoss, "Bar Percentage")
     app.addGraph(b2, 8, 0,2,2, addLabel=True)
 
     t1 = Text(txtParserAvgPrice,CommonStyle.CenterText,"Avg Price",pos='left')

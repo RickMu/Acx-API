@@ -6,7 +6,8 @@ import urllib.parse
 import urllib.error
 
 from builder_clients.api_builders import *
-from repository.acx_repo import AcxDB, MongoRepo
+from repository.acx_repo import*
+from exchange.exchange import *
 from client_server.errors import ServerError
 import datetime
 import json
@@ -35,11 +36,14 @@ class myHandler(BaseHTTPRequestHandler):
         print("Request: +"+ self.path)
 
         parseResult = urllib.parse.urlparse(self.path)
-        service = parseResult.path.split("/")[1]
+        path= parseResult.path.split("/")
+        db = path[1]
+        service= path[2]
         param_dict = urllib.parse.parse_qs(parseResult.query)
+        print("Params_Dict: " +str(param_dict))
 
         parser = ServerParser()
-        response, error = parser.parseRequest(service, param_dict)
+        response, error = parser.parseRequest(db, service, param_dict)
 
 
         if error is not None:
@@ -55,7 +59,8 @@ class myHandler(BaseHTTPRequestHandler):
 
 
 class ServerInfo:
-    PORT_NUMBER=80
+    PORT_NUMBER=8080
+    SERVER_PORT=80
 
 
 class PARAMS:
@@ -131,19 +136,24 @@ class ServerService:
 
 class ServerParser:
     def __init__(self):
-        self.db = AcxDB()
         self.requestMapper = {
             ServerService.FindAll:self.parseFindAll,
             ServerService.FindAfter:self.parseFindAfterTime,
             ServerService.FindInBetween:self.parseFindInBetween
         }
+
+        self.db ={
+            GdxExchange.Name : GdxDB(),
+            AcxExchange.Name : AcxDB()
+
+        }
         self.p = PARAMS()
 
-    def parseRequest(self,service,params_dict):
+    def parseRequest(self,db, service,params_dict):
         if service not in self.requestMapper.keys():
             return None, ServerError("Service: "+service+" not in service provided "
                                      +str(self.requestMapper.keys()))
-        response, error = self.requestMapper[service](params_dict)
+        response, error = self.requestMapper[service](db, params_dict)
 
         if error is not None:
             return None, error
@@ -155,11 +165,11 @@ class ServerParser:
 
         systemTimeUrl = api.service(AcxApiBuilder.Service.SystemTime).getAPI()
 
-        sysTime = loadJSON(systemTimeUrl)
+        sysTime = None#loadJSON(systemTimeUrl)
         if(sysTime is not None):
             readable = datetime.datetime.fromtimestamp(sysTime)
         if(sysTime is None):
-            readable = datetime.datetime.now()
+            readable = datetime.datetime.utcnow() + datetime.timedelta(hours=11)
 
         return readable
 
@@ -167,14 +177,14 @@ class ServerParser:
         time = time- datetime.timedelta(hours=11)
         return time.isoformat()
 
-    def parseFindAll(self, params_dict):
+    def parseFindAll(self, db, params_dict):
 
         market = self.p.findMarketInParams(params_dict)
         if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
             return None, error
 
-        repo,error = self.db.getRepository(market)
+        repo,error = self.db[db].getRepository(market)
 
         if error is not None:
             return None, error
@@ -182,14 +192,14 @@ class ServerParser:
         response = list(repo.findAll())
         return response, error
 
-    def parseFindInBetween(self,params_dict):
+    def parseFindInBetween(self,db,params_dict):
 
         market = self.p.findMarketInParams(params_dict)
         if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
             return None, error
 
-        repo, error = self.db.getRepository(market)
+        repo, error = self.db[db].getRepository(market)
         if error is not None:
             return None, error
 
@@ -222,14 +232,14 @@ class ServerParser:
         return list(cursor), None
 
 
-    def parseFindAfterTime(self,params_dict):
+    def parseFindAfterTime(self,db,params_dict):
 
         market = self.p.findMarketInParams(params_dict)
         if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
             return None, error
 
-        repo,error = self.db.getRepository(market)
+        repo,error = self.db[db].getRepository(market)
 
         if error is not None:
             return None, error
@@ -253,11 +263,23 @@ class ServerParser:
 
 
 class ServerRequest:
-    DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'
-    def __init__(self, portnumber):
-        self.rq =ServerRequest.DNS #+str(portnumber)
-        self.portnumber = portnumber
+    DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'#"http://localhost:"
+
+    def __init__(self):
+
+        self.portnumber = ServerInfo.PORT_NUMBER
+        self.rq = ServerRequest.DNS  #+str(portnumber)
         self.p = PARAMS()
+
+    def database(self,db):
+        if isinstance(db, GdxExchange):
+            self.rq+="/"+GdxExchange.Name
+        elif isinstance(db,AcxExchange):
+            self.rq+="/"+AcxExchange.Name
+        else:
+            raise Exception("Instance: "+ db+ " is not of any Exchange")
+
+        return self
 
     def getRequest(self):
         request = self.rq
@@ -308,15 +330,15 @@ class ServerRequest:
 
         return self.getRequest()
 
-    def buildFindInBetweenRequest(self,market,s_year,s_month,s_day,to_day,to_hour=0):
-
+    def buildFindInBetweenRequest(self, db, ticker, s_year, s_month, s_day, to_day, to_hour=0):
+        self.database(db)
         self.Service((ServerService.FindInBetween))
         self.Query()
 
-        if (market is None):
+        if (ticker is None):
             raise Exception("Market cannot be None")
         else:
-            self.Market(market)
+            self.Market(ticker)
 
         date = self.p.constructStartDate(s_year,s_month,s_day)
         self.AND()
@@ -336,15 +358,16 @@ class ServerRequest:
     '''
     Retrieves all the instances after a certain time
     '''
-    def buildAfterTimeRequest(self, market,day = None, hour= None, minute= None):
+    def buildAfterTimeRequest(self, db, ticker, day = None, hour= None, minute= None):
 
+        self.database(db)
         self.Service(ServerService.FindAfter)
         self.Query()
 
-        if (market is None):
+        if (ticker is None):
             raise Exception("Market cannot be None")
         else:
-            self.Market(market)
+            self.Market(ticker)
 
         if(day is not None):
             self.AND()
@@ -360,11 +383,16 @@ class ServerRequest:
 
 def run():
 
+
     try:
         #Create a web server and define the handler to manage the
         #incoming request
-        server = HTTPServer(('0.0.0.0', ServerInfo.PORT_NUMBER), myHandler)
-        print ('Started httpserver on port ' , ServerInfo.PORT_NUMBER)
+
+        allhosts = '0.0.0.0'
+        localhost = 'localhost'
+        server = HTTPServer((allhosts, ServerInfo.SERVER_PORT), myHandler)
+
+        print ('Started httpserver on port ' , ServerInfo.SERVER_PORT)
 
         #Wait forever for incoming htto requests
         server.serve_forever()
@@ -387,8 +415,9 @@ if __name__ == '__main__':
         print(response)
     '''
 
-    request = ServerRequest(ServerInfo.PORT_NUMBER)
-    r = request.buildFindInBetweenRequest("btcaud",2017,12,29,7)
+
+    request = ServerRequest()
+    r = request.buildFindInBetweenRequest(GdxExchange(),"btcaud",2017,12,29,7)
     print(r)
 
     #p = PARAMS()
