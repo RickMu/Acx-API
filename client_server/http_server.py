@@ -379,6 +379,11 @@ class ServerRequest:
         self.Query()
 
         if db is None:
+            raise Exception("Database cannot be None")
+        else:
+            self.database(db)
+
+        if ticker is None:
             raise Exception("Market cannot be None")
         else:
             self.database(db)
@@ -407,7 +412,7 @@ class ServerRequest:
         self.Query()
 
         if db is None:
-            raise Exception("Market cannot be None")
+            raise Exception("Database cannot be None")
         else:
             self.database(db)
 
