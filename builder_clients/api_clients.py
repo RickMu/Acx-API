@@ -60,7 +60,8 @@ class client:
             f = open('./fetch.log')
             if len(f.read().split("\n")) > 20:
                 f = open('./fetch.log','w').close()
-            f.close()
+            else:
+                f.close()
             logging.info("data read successfully: "+ str(k))
             return data
         except socket.timeout as timeout:
