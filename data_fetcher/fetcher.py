@@ -1,7 +1,7 @@
 
 import sys
 
-sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+sys.path.append("/home/ec2-user/Acx-API")
 print(sys.path)
 import logging
 
