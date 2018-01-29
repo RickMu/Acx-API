@@ -166,6 +166,7 @@ class ServerParser:
 
 
     def parseRequest(self, service,params_dict):
+
         if service not in self.requestMapper.keys():
             return None, ServerError("Service: "+service+" not in service provided "
                                      +str(self.requestMapper.keys()))
@@ -295,20 +296,19 @@ class ServerParser:
     def displayStatus(self, params_dict):
         import os
         pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
-        fetchers = ""
+        fetchers = []
 
         for pid in pids:
             try:
                 procs = open(os.path.join('/proc', pid, 'cmdline'), 'rb').read()
 
                 if "fetcher" in str(procs):
-                    fetchers+=(procs+"\n")
+                    fetchers.append(str(procs))
             except IOError:  # proc has already terminated
                 continue
         if fetchers == "":
             fetchers = "WARNING no fetchers RUNNING"
-        return fetchers
-
+        return fetchers, None
 
 class ServerRequest:
     DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'
@@ -442,7 +442,7 @@ def run():
 
         allhosts = '0.0.0.0'
         localhost = 'localhost'
-        server = HTTPServer((localhost, ServerInfo.PORT_NUMBER), myHandler)
+        server = HTTPServer((allhosts, ServerInfo.SERVER_PORT), myHandler)
 
         print ('Started httpserver on port ' , ServerInfo.SERVER_PORT)
 
