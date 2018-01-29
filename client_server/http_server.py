@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+sys.path.append("/home/ec2-user/Acx-API")
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.request
 import urllib.parse
@@ -37,14 +37,15 @@ class myHandler(BaseHTTPRequestHandler):
 
         parseResult = urllib.parse.urlparse(self.path)
         path= parseResult.path.split("/")
-        db = path[1]
-        service= path[2]
+        print(path)
+        service = path[1]
         param_dict = urllib.parse.parse_qs(parseResult.query)
+        print("Params_Dict: " +str(param_dict))
 
         print("params_dict: "+ str(param_dict))
 
         parser = ServerParser()
-        response, error = parser.parseRequest(db, service, param_dict)
+        response, error = parser.parseRequest(service, param_dict)
 
 
         if error is not None:
@@ -65,6 +66,7 @@ class ServerInfo:
 
 
 class PARAMS:
+    DB = "database"
     HOUR ="hour"
     MINUTE = "minute"
     DAY = "day"
@@ -105,6 +107,13 @@ class PARAMS:
 
         return params_dict[PARAMS.MARKET][0]
 
+    def findDBInParams(self,params_dict):
+        if PARAMS.DB not in params_dict:
+            return None
+
+        return params_dict[PARAMS.DB][0]
+
+
 
     def constructStartDate(self,year, month, day,hour= 0,minute=0):
         # Format to follow is this %Y-%m-%dT%H:%M
@@ -133,6 +142,7 @@ class ServerService:
     FindAll = "findall"
     FindAfter="findafter"
     FindInBetween = "findinbetween"
+    Status = "status"
 
 
 class ServerParser:
@@ -140,7 +150,9 @@ class ServerParser:
         self.requestMapper = {
             ServerService.FindAll:self.parseFindAll,
             ServerService.FindAfter:self.parseFindAfterTime,
-            ServerService.FindInBetween:self.parseFindInBetween
+            ServerService.FindInBetween:self.parseFindInBetween,
+            ServerService.Status:self.displayStatus
+
         }
 
         self.db ={
@@ -150,11 +162,14 @@ class ServerParser:
         }
         self.p = PARAMS()
 
-    def parseRequest(self,db, service,params_dict):
+
+
+
+    def parseRequest(self, service,params_dict):
         if service not in self.requestMapper.keys():
             return None, ServerError("Service: "+service+" not in service provided "
                                      +str(self.requestMapper.keys()))
-        response, error = self.requestMapper[service](db, params_dict)
+        response, error = self.requestMapper[service]( params_dict)
 
         if error is not None:
             return None, error
@@ -166,11 +181,11 @@ class ServerParser:
 
         systemTimeUrl = api.service(AcxApiBuilder.Service.SystemTime).getAPI()
 
-        sysTime = loadJSON(systemTimeUrl)
+        sysTime = None#loadJSON(systemTimeUrl)
         if(sysTime is not None):
             readable = datetime.datetime.fromtimestamp(sysTime)
         if(sysTime is None):
-            readable = datetime.datetime.now()
+            readable = datetime.datetime.utcnow() + datetime.timedelta(hours=11)
 
         return readable
 
@@ -178,11 +193,15 @@ class ServerParser:
         time = time- datetime.timedelta(hours=11)
         return time.isoformat()
 
-    def parseFindAll(self, db, params_dict):
+    def parseFindAll(self, params_dict):
 
         market = self.p.findMarketInParams(params_dict)
         if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
+            return None, error
+        db = self.p.findDBInParams(params_dict)
+        if market is None:
+            error = ServerError(ServerError.Four + ": No DB Specified")
             return None, error
 
         repo,error = self.db[db].getRepository(market)
@@ -193,11 +212,16 @@ class ServerParser:
         response = list(repo.findAll())
         return response, error
 
-    def parseFindInBetween(self,db,params_dict):
+    def parseFindInBetween(self,params_dict):
 
         market = self.p.findMarketInParams(params_dict)
         if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
+            return None, error
+
+        db = self.p.findDBInParams(params_dict)
+        if market is None:
+            error = ServerError(ServerError.Four + ": No DB Specified")
             return None, error
 
         repo, error = self.db[db].getRepository(market)
@@ -233,11 +257,16 @@ class ServerParser:
         return list(cursor), None
 
 
-    def parseFindAfterTime(self,db,params_dict):
+    def parseFindAfterTime(self,params_dict):
 
         market = self.p.findMarketInParams(params_dict)
         if market is None:
             error = ServerError(ServerError.Four + ": No Market Specified")
+            return None, error
+
+        db = self.p.findDBInParams(params_dict)
+        if market is None:
+            error = ServerError(ServerError.Four + ": No DB Specified")
             return None, error
 
         repo,error = self.db[db].getRepository(market)
@@ -263,6 +292,23 @@ class ServerParser:
         cursor = repo.findAfterTime(currtime)
         return list(cursor), None
 
+    def displayStatus(self, params_dict):
+        import os
+        pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
+        fetchers = ""
+
+        for pid in pids:
+            try:
+                procs = open(os.path.join('/proc', pid, 'cmdline'), 'rb').read()
+
+                if "fetcher" in str(procs):
+                    fetchers+=(procs+"\n")
+            except IOError:  # proc has already terminated
+                continue
+        if fetchers == "":
+            fetchers = "WARNING no fetchers RUNNING"
+        return fetchers
+
 
 class ServerRequest:
     DNS = 'http://ec2-35-169-63-106.compute-1.amazonaws.com'
@@ -276,13 +322,7 @@ class ServerRequest:
         self.p = PARAMS()
 
     def database(self,db):
-        if isinstance(db, GdxExchange):
-            self.rq+="/"+GdxExchange.Name
-        elif isinstance(db,AcxExchange):
-            self.rq+="/"+AcxExchange.Name
-        else:
-            raise Exception("Instance: "+ db+ " is not of any Exchange")
-
+        self.rq += (PARAMS.DB + "=" + db.Name)
         return self
 
     def getRequest(self):
@@ -335,14 +375,13 @@ class ServerRequest:
         return self.getRequest()
 
     def buildFindInBetweenRequest(self, db, ticker, s_year, s_month, s_day, to_day, to_hour=0):
-        self.database(db)
-        self.Service((ServerService.FindInBetween))
+        self.Service(ServerService.FindAfter)
         self.Query()
 
-        if (ticker is None):
+        if db is None:
             raise Exception("Market cannot be None")
         else:
-            self.Market(ticker)
+            self.database(db)
 
         date = self.p.constructStartDate(s_year,s_month,s_day)
         self.AND()
@@ -364,9 +403,13 @@ class ServerRequest:
     '''
     def buildAfterTimeRequest(self, db, ticker, day = None, hour= None, minute= None):
 
-        self.database(db)
         self.Service(ServerService.FindAfter)
         self.Query()
+
+        if db is None:
+            raise Exception("Market cannot be None")
+        else:
+            self.database(db)
 
         if (ticker is None):
             raise Exception("Market cannot be None")
@@ -391,10 +434,12 @@ def run():
     try:
         #Create a web server and define the handler to manage the
         #incoming request
+
         allhosts = '0.0.0.0'
         localhost = 'localhost'
         server = HTTPServer((localhost, ServerInfo.PORT_NUMBER), myHandler)
-        print ('Started httpserver on port ' , ServerInfo.PORT_NUMBER)
+
+        print ('Started httpserver on port ' , ServerInfo.SERVER_PORT)
 
         #Wait forever for incoming htto requests
         server.serve_forever()

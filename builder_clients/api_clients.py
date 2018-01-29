@@ -33,6 +33,10 @@ class UnifiedFormat:
         return
 
 
+import logging
+
+logging.basicConfig(filename='./fetch.log', level=logging.DEBUG, filemode='w')
+
 class client:
     def loadJSON(self,url):
         try:
@@ -46,17 +50,31 @@ class client:
             #req = urllib.request.Request(url,headers= headers)
             response = urllib.request.urlopen(url,timeout=5)
             response = response.read().decode('utf-8')
+
+
             data = json.loads(response)
+            k = "empty"
+            for k in data:
+                break
+
+            f = open('./fetch.log')
+            if len(f.read().split("\n")) > 20:
+                f = open('./fetch.log','w').close()
+            f.close()
+            logging.info("data read successfully: "+ str(k))
             return data
         except socket.timeout as timeout:
             print("timed out...")
             print(timeout)
+            logging.debug(timeout)
             return None
         except urllib.error.HTTPError as error:
             print(error)
+            logging.debug(error)
             return None
         except urllib.error.URLError as error:
             print(error)
+            logging.debug(error)
             return None
     @abc.abstractmethod
     def fetchTickers(self):
@@ -248,7 +266,8 @@ class GDXApiClient(client,UnifiedFormat):
 
 
         trades = self.__getTradesBeforeID(ticker, lastTradeID)
-        trades = self.__unifyTradesFormat(trades)
+        if trades is not None:
+            trades = self.__unifyTradesFormat(trades)
 
         return trades
 

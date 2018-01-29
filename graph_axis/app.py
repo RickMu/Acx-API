@@ -97,7 +97,7 @@ if __name__ == "__main__":
     gdx = GdxExchange()
 
     app = pyQtTimeGraphWrapper(gdx,100,3)
-    app.setMarket(GdxExchange.Ticker.BITCOIN)
+    app.setMarket(GdxExchange.Ticker.BCH)
 
     g1= Graph(name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")

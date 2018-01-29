@@ -37,20 +37,20 @@ class DataFetcherThread(threading.Thread):
         self.conn = MongoClient('localhost', 27017)
 
         self.clients =[
-            AcxApiClient(),
+            #AcxApiClient(),
             GDXApiClient()
         ]
         self.tickers = {
             self.clients[0]:[],
-            self.clients[1]:[]
+            #self.clients[1]:[]
         }
         self.cryptoLastID = {
             self.clients[0]: {},
-            self.clients[1]: {}
+            #self.clients[1]: {}
         }
         self.dbs ={
-            self.clients[0]: AcxDB(),
-            self.clients[1]: GdxDB()
+            #self.clients[0]: AcxDB(),
+            self.clients[0]: GdxDB()
         }
 
     def initialise(self):
@@ -141,9 +141,6 @@ class DataFetcherThread(threading.Thread):
 if __name__ == '__main__':
 
 
-    logging.debug('This message should go to the log file')
-    logging.info('So should this')
-    logging.warning('And this, too')
 
 
     fetcher = DataFetcherThread()
