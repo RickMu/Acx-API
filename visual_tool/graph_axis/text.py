@@ -2,7 +2,7 @@ import pyqtgraph as pg
 
 class CommonStyle:
 
-    CenterText='<div style="text-align: center"><span style="color: #FF0; font-size: 16pt;">%s</span></div>'
+    CenterText='<div style="altcoin-align: center"><span style="color: #FF0; font-size: 16pt;">%s</span></div>'
 
 
 class Text(pg.LabelItem):

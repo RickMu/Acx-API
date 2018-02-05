@@ -1,5 +1,5 @@
 import abc
-from builder_clients.api_builders import *
+from visual_tool.builder_clients.api_builders import *
 import urllib.error
 import urllib.request
 import socket

@@ -12,6 +12,10 @@ class TimeFormat:
     TRADES_TIME_FORMAT = "%Y-%m-%dT%H:%M"
 
     def makeTimeIntervals(tradesDF, interval='min',time_interval= 5):
+
+        if tradesDF is None:
+            return
+
         x = tradesDF['time'].values
 
         x = [dt.datetime.strptime(i, TimeFormat.TRADES_TIME_FORMAT) for i in x]
@@ -42,12 +46,13 @@ class TimeFormat:
 
 
 def parseVolume(tradesDF):
+
+
+
     if ('interval' in tradesDF):
         d = dict((tradesDF.groupby('interval').sum())['volume'])
     else:
         d = dict((tradesDF.groupby('time').sum())['volume'])
-    print(d)
-
     x = []
     y = []
     for k, v in d.items():
@@ -58,7 +63,6 @@ def parseVolume(tradesDF):
         #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
     x = datetimeToTimeStamp(x)
 
-    print(dt.datetime.fromtimestamp(x[0]))
     return x, y
 
 
@@ -74,10 +78,10 @@ def datetimeToTimeStamp(d):
 
 
 def parse(data):
-
+    '''
     if type(data) is not pd.DataFrame:
         raise Exception("Data should be type dataframe")
-
+    '''
     return
 
 
@@ -130,7 +134,6 @@ def parseVolume(data):
         d = dict((data.groupby('interval').sum())['volume'])
     else:
         d = dict((data.groupby('time').sum())['volume'])
-    print(d)
 
     x = []
     y = []
@@ -144,16 +147,88 @@ def parseVolume(data):
 
     return x, y
 
+
+def parseVolume(data):
+    parse(data)
+    if ('interval' in data):
+        d = dict((data.groupby('interval').sum())['volume'])
+    else:
+        d = dict((data.groupby('time').sum())['volume'])
+
+    x = []
+    y = []
+    for k, v in d.items():
+        x.append(k)
+        y.append(v)
+
+        # if('interval' not in tradesDF):
+        #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
+    x = datetimeToTimeStamp(x)
+
+    return x, y
+
+
+
+def parse24HrVolume(data):
+    parse(data)
+
+    print(len(data['main']))
+    print(len(data['support']))
+
+    suppdata = data['support']
+
+    if ('interval' in data['main']):
+
+        sd = dict((suppdata.groupby('interval').sum())['volume'])
+        d = dict((data['main'].groupby('interval').sum())['volume'])
+    else:
+        sd = dict((suppdata.groupby('time').sum())['volume'])
+        d = dict((data['main'].groupby('time').sum())['volume'])
+
+
+    sdk = list(sd.keys())
+    sdk.sort()
+    dk = list(d.keys())
+    dk.sort()
+
+    allk = sdk+dk
+
+    start_volume= 0
+    for i in sdk:
+        start_volume+=sd[i]
+
+    volume24Hr = [start_volume]
+
+    for i in range(1,len(dk)):
+        print(allk[i-1])
+
+
+        if allk[i-1] in sdk:
+            start_volume -= sd[allk[i - 1]]
+        else:
+            start_volume -= d[allk[i - 1]]
+
+        start_volume+=d[allk[i+len(sdk)-1]]
+
+        volume24Hr.append(start_volume)
+
+
+    y = volume24Hr
+        # if('interval' not in tradesDF):
+        #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
+    x = datetimeToTimeStamp(dk)
+
+    return x, y
+
+
 def parseCash(data):
     parse(data)
 
     ids = data.groupby('time')['AbsoluteCash'].idxmax()
-    print(ids.values)
     netcash = data.loc[ids]['NetCashInMarket'].values
     time = data.loc[ids]['time'].values
 
     time = datetimeToTimeStamp(time)
-    print(dt.datetime.fromtimestamp(time[0]))
     return time, netcash
 
 def parseTradeCount(data):

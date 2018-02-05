@@ -3,14 +3,11 @@ from pymongo import MongoClient, errors
 from abc import abstractmethod
 from visual_tool.exchange.exchange import *
 from Error import DataBaseError
-
-class DB:
-    db = MongoClient('localhost', 27017)
-
+'''
 
 class AcxDB():
     def __init__(self):
-        self.conn = DB.db.Acx
+        self.conn = DBMapper.source.Acx
         self.BitcoinRepo = None
         self.EtherRepo = None
         self.HSRRepo = None
@@ -51,7 +48,7 @@ class AcxDB():
 
 class GdxDB():
     def __init__(self):
-        self.conn = DB.db.Gdx
+        self.conn = DBMapper.db.Gdx
         self.BitcoinRepo = None
         self.EtherRepo = None
         self.BCHRepo = None
@@ -92,8 +89,61 @@ class GdxDB():
             self.BCHRepo = MongoRepo(self.conn.bch)
         return self.BCHRepo
 
+'''
+
+class GdxDB:
+    NAME = 'Gdx'
+    BTC = "bitcoin"
+    BCH = "bch"
+    ETH ="ether"
+    LTC = "ltc"
+
+    def __init__(self,source):
+        self.db = source.Gdx
+        self.collections={
+            GdxDB.BTC:self.db.bitcoin,
+            GdxDB.LTC:self.db.ltc,
+            GdxDB.ETH:self.db.ether,
+            GdxDB.BCH:self.db.bch
+        }
+
+
+
+class AcxDB:
+    NAME = 'Acx'
+    BTC = "bitcoin"
+    BCH = "bch"
+    ETH = "ether"
+    HSR = "hsr"
+
+    def __init__(self, source):
+        self.db = source.Acx
+        self.collections = {
+            AcxDB.BTC: self.db.bitcoin,
+            AcxDB.HSR: self.db.hsr,
+            AcxDB.ETH: self.db.ether,
+            AcxDB.BCH: self.db.bch
+        }
+
+
+class DBMapper:
+
+    DBs = {
+        GdxDB.NAME:GdxDB,
+        AcxDB.NAME: AcxDB
+    }
+    @staticmethod
+    def getConn(source, db,collection):
+        return DBMapper.DBs[db](source).collections[collection]
+
+
 
 class Repository():
+
+    @abstractmethod
+    def selectRepo(self,db):
+        return
+
     @abstractmethod
     def insert(self, instance):
         return
@@ -108,8 +158,29 @@ class Repository():
 
 
 class MongoRepo(Repository):
-    def __init__(self, collection):
-        self.cryptocoin = collection
+
+    Repo = None
+
+    @staticmethod
+    def getRepo():
+        if MongoRepo.Repo is None:
+            MongoRepo.Repo = MongoRepo()
+
+        return MongoRepo.Repo
+
+    def __init__(self):
+        self.source = MongoClient('localhost', 27017)
+        self.cryptocoin = None
+
+    def setDatabaseCollection(self,db,collection):
+        self.cryptocoin = DBMapper.getConn(db,collection)
+        if self.cryptocoin is None:
+            error = DataBaseError("Either Database: " + db + "or collection: "+ collection +" are not in repository")
+            return error
+        return None
+
+
+
     def insert(self, instance):
         super().insert(instance)
         try:
@@ -145,7 +216,7 @@ class MongoRepo(Repository):
 
     def findInBetweenTime(self,top_limit, bottom_limit):
 
-        return self.cryptocoin.find({'created_at': {'$gt': bottom_limit, "$lt":top_limit}}, projection={"_id": 0})
+        return self.cryptocoin.find({'created_at': {'$gte': bottom_limit, "$lt":top_limit}}, projection={"_id": 0})
 
     def update(self,id, cols):
         self.cryptocoin.update({'id': id}, {"$set": cols})
@@ -155,8 +226,8 @@ class MongoRepo(Repository):
 Tests of the above operations should be done over here
 '''
 if __name__ == "__main__":
-    db = AcxDB()
-    cursor = db.getRepository(AcxExchange.Ticker.BITCOIN)[0].findAfterTime("2018-02-02T09:38:27")
+    source = AcxDB()
+    cursor = source.getRepository(AcxExchange.Ticker.BITCOIN)[0].findAfterTime("2018-02-02T09:38:27")
     #cursor = db.getRepository(AcxExchange.Market.BITCOIN)[0].findLastTrade()
     #cursor=db.getRepository(AcxExchange.Ticker.BITCOIN)[0].findInBetweenTime("2017-12-28T00:00:00", '2017-12-26T22:00:00')
     for i in cursor:

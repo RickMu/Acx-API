@@ -9,6 +9,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import datetime as dt
 from  visual_tool.data_parser.parser import TimeFormat
+import pandas as pd
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):
@@ -24,18 +25,19 @@ class DateAxis(pg.AxisItem):
                 strns.append(time.strftime(string, time.localtime(x)))
             except ValueError:  ## Windows can't handle dates before 1970
                 strns.append('')
-        # self.setLabel(text=label)
+        # self.setLabel(altcoin=label)
         return strns
 
 
 class Graph():
 
-    def __init__(self,name=None, title=None, axisItem = None):
+    def __init__(self, supportData= False, name=None, title=None, axisItem = None):
         print('start')
         self.plot_count = 0
         self.plots={}
         self.plots_color={}
         self.dataParser= {}
+        self.needSuppData= supportData
         if axisItem is None:
             axisItem = DateAxis(orientation='bottom')
             #axisItem.setTickSpacing(3600, 1800)
@@ -48,11 +50,20 @@ class Graph():
         self.graph.addItem(self.hLine, ignoreBounds=True)
         self.label =None
 
-        self.data= None
+        self.data= pd.DataFrame()
+        self.supportData = pd.DataFrame()
         self.buttons =None
+
+        self.xNy= {}
+        self.intervalTransformer= False
+        self.time_unit =None
+        self.interval = None
+
 
     def setLabel(self,label):
         self.label = label
+    def needsSupportData(self):
+        return self.needSuppData
 
     def addPlot(self,parser, name = None, color = 'g'):
         dataItem = self.graph.plot()
@@ -69,16 +80,64 @@ class Graph():
         self.plot_count += 1
 
 
-    def plot(self,data):
+    def addData(self,data,suppData=None):
+        if self.intervalTransformer:
+            TimeFormat.makeTimeIntervals(data,self.time_unit,self.interval)
+            TimeFormat.makeTimeIntervals(suppData, self.time_unit, self.interval)
 
-        if self.data is None:
-            self.data = data
+
+        if suppData is not None:
+            self.supportData = pd.concat([self.supportData, suppData.copy()])
+        self.data = pd.concat([self.data, data.copy()])
+
+        self.plot()
+
+    def plot(self):
+
         for k,v in self.plots.items():
-            v.clear()
-            x,y = self.dataParser[k](data)
+
+            if self.needSuppData:
+                x, y = self.dataParser[k]({
+                    'main':self.data,
+                    'support':self.supportData
+                })
+            else:
+                x, y = self.dataParser[k](self.data)
+
+            '''
+            for i in range(len(x)):
+                if x[i] not in self.xNy.keys():
+                    self.xNy[x[i]] = y[i]
+                else:
+                    self.xNy[x[i]] += y[i]
+            x=[]
+            y=[]
+            for x_,y_ in self.xNy.items():
+                x.append(x_)
+                y.append(y_)
+            '''
             xy = {"x":x,"y":y}
-            print(xy)
             v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
+
+
+    def replot(self, time_unit,interval):
+        if time_unit is None and interval is None:
+            self.data.drop(['interval'])
+            self.plot()
+            self.intervalTransformer=False
+            return
+
+        self.intervalTransformer = True
+        self.time_unit = time_unit
+        self.interval = interval
+
+        if self.needSuppData:
+            TimeFormat.makeTimeIntervals(self.data,time_unit,interval)
+            TimeFormat.makeTimeIntervals(self.supportData,time_unit,interval)
+            self.plot()
+        else:
+            TimeFormat.makeTimeIntervals(self.data,time_unit,interval)
+            self.plot()
 
 
 
@@ -116,15 +175,6 @@ class Graph():
 
 
 
-    def replot(self, time_unit,interval):
-
-        if time_unit is None and interval is None:
-            self.plot(self.data)
-            return
-
-        cp = self.data.copy()
-        data = TimeFormat.makeTimeIntervals(cp,time_unit,interval)
-        self.plot(data)
 
 
     def onMouseMoved(self,evt):
@@ -191,13 +241,14 @@ class RegionSelectionGraph(Graph):
 
 
 class BarGraph(Graph):
-    def __init__(self,name=None, title=None):
+    def __init__(self,supportData = False, name=None, title=None):
         print('start')
         self.plot_count = 0
         self.plots={}
         self.plots_color={}
         self.dataParser= {}
         self.graph = pg.PlotItem(name=name,title=title)
+        self.supportData = supportData
 
         self.vLine = pg.InfiniteLine(angle=90, movable=False)
         self.hLine = pg.InfiniteLine(angle=0, movable=False)
@@ -205,6 +256,7 @@ class BarGraph(Graph):
         self.graph.addItem(self.hLine, ignoreBounds=True)
         self.label =None
         self.buttons = None
+        self.data = pd.DataFrame()
 
 
     def addPlot(self, parser, name=None, color='g'):
@@ -218,10 +270,18 @@ class BarGraph(Graph):
         self.dataParser[name] = parser
         self.plot_count += 1
 
-    def plot(self, data):
+    def needsSupportData(self):
+        return self.supportData
 
+    def addData(self,data,supportData= None):
+        self.data = pd.concat([self.data,data.copy()])
+        self.plot()
+
+
+    def plot(self):
+        self.graph.clear()
         for k,v in self.plots.items():
-            x, y = self.dataParser[k](data)
+            x, y = self.dataParser[k](self.data)
             if(len(x)>1):
                 width = x[1]-x[0]
             else:

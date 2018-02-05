@@ -30,7 +30,7 @@ class myHandler(BaseHTTPRequestHandler):
     #Handler for the GET requests
     def do_GET(self):
         self.send_response(200)
-        self.send_header('Content-type','text/html')
+        self.send_header('Content-type','altcoin/html')
         self.end_headers()
         # Send the html message
         print("Request: +"+ self.path)
@@ -161,8 +161,6 @@ class ServerParser:
 
         }
         self.p = PARAMS()
-
-
 
 
     def parseRequest(self, service,params_dict):
@@ -374,8 +372,8 @@ class ServerRequest:
 
         return self.getRequest()
 
-    def buildFindInBetweenRequest(self, db, ticker, s_year, s_month, s_day, to_day, to_hour=0):
-        self.Service(ServerService.FindAfter)
+    def buildFindInBetweenRequest(self, db, ticker, s_year, s_month, s_day,s_hour,s_minute, to_day, to_hour=0):
+        self.Service(ServerService.FindInBetween)
         self.Query()
 
         if db is None:
@@ -388,9 +386,9 @@ class ServerRequest:
         if ticker is None:
             raise Exception("Market cannot be None")
         else:
-            self.database(db)
+            self.Market(ticker)
 
-        date = self.p.constructStartDate(s_year,s_month,s_day)
+        date = self.p.constructStartDate(s_year,s_month,s_day,s_hour,s_minute)
         self.AND()
         self.Date(date)
 
@@ -473,7 +471,7 @@ if __name__ == '__main__':
 
 
     request = ServerRequest()
-    r = request.buildFindInBetweenRequest(GdxExchange(),"btcaud",2017,12,29,7)
+    r = request.buildFindInBetweenRequest(GdxExchange(),GdxExchange.Ticker.BITCOIN,2018,1,1,1)
     print(r)
 
     #p = PARAMS()

@@ -7,18 +7,22 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore,QtGui
 from collections import defaultdict
 from visual_tool.client_server.http_client import HttpClient
+from visual_tool.data_fetcher.client_live_data import *
 
 class pyQtTimeGraphWrapper():
 
-    def __init__(self, db, rows, cols):
+    def __init__(self,  db,ticker, rows, cols, live=False):
         self.win = pg.GraphicsWindow()
         self.win.setWindowTitle("pyQTGRAPH: Tryout")
         self.graphs = []
         self.texts = []
         self.db = db
-        self.client = HttpClient(db)
+        self.client = HttpClient(db,ticker)
+        self.liveupdate = ClientLiveData(db,ticker)
         self.max_row=rows
         self.max_col=cols
+        self.ticker = ticker
+        self.live = live
 
 
     def start(self):
@@ -26,6 +30,7 @@ class pyQtTimeGraphWrapper():
 
         proxy = pg.SignalProxy(self.win.sceneObj.sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         self.client.newData.connect(self.update)
+        self.liveupdate.newData.connect(self.liveUpdate)
         self.client.start()
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
             QtGui.QApplication.instance().exec_()
@@ -62,25 +67,33 @@ class pyQtTimeGraphWrapper():
 
 
 
-    def update(self, tradesDF, market):
-        # getData()
+    def liveUpdate(self,tradesDF,suppData=None):
+        for p in self.graphs:
+            print('plotting again')
+            if not p.needsSupportData():
+                p.addData(tradesDF)
 
+
+    def update(self, tradesDF, suppData):
+        # getData()
 
         print("plotting")
         for p in self.graphs:
-            p.plot(tradesDF)
+            if not p.needsSupportData():
+                p.addData(tradesDF)
+            else:
+                p.addData(tradesDF,suppData)
 
-        print("updating text")
+        print("updating altcoin")
 
         for t in self.texts:
             t.setHtml(tradesDF)
 
-        print("__________________________")
-        print(tradesDF)
-        print((tradesDF.groupby('time').sum()))
+        b= tradesDF.iloc[0]['id']
 
-    def setMarket(self,market):
-        self.client.setMarket(market)
+        if self.live:
+            self.liveupdate.registerID(tradesDF.iloc[0]['id'])
+            self.liveupdate.start()
 
     def mouseMoved(self, evt):
           ## using signal proxy turns original arguments into a tuple
@@ -96,44 +109,47 @@ if __name__ == "__main__":
     acx = AcxExchange()
     gdx = GdxExchange()
 
-    app = pyQtTimeGraphWrapper(gdx,100,3)
-    app.setMarket(GdxExchange.Ticker.ETHER)
+    app = pyQtTimeGraphWrapper(gdx,GdxExchange.Ticker.BITCOIN,100,3)
 
-    g1= Graph(name = "Price Graph")
+    g1= Graph(supportData=False, name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")
     app.addGraph(g1,0,0,2,2,addLabel=True)
 
-    g2= Graph(name = "StdDev Graph")
+    g2= Graph(supportData=False,name = "StdDev Graph")
     g2.addPlot(parseStdDev,"StdDevGraph")
     app.addGraph(g2, 2, 0,2,2, addLabel=True)
 
-    g3 = Graph(name="Volume Graph")
+    g3 = Graph(supportData=False,name="Volume Graph")
     g3.addPlot(parseVolume, "Volume Graph")
     app.addGraph(g3, 4, 0,2,2, addLabel=True)
 
-    b1 = BarGraph(name="Bar Percentage Graph")
-    b1.addPlot(barGraphPriceIntervalVolumePercentage, "Bar Percentage")
-    app.addGraph(b1,6,0,2,2,addLabel=True)
+    g4 = Graph(supportData=True, name="24Hr Volume Graph")
+    g4.addPlot(parse24HrVolume, "24Hr Volume Graph")
+    app.addGraph(g4, 6, 0, 2, 2, addLabel=True)
 
-    b2 = BarGraph(name = "Bar Gain/Loss Graph")
+    b1 = BarGraph(supportData=False,name="Bar Percentage Graph")
+    b1.addPlot(barGraphPriceIntervalVolumePercentage, "Bar Percentage")
+    app.addGraph(b1,8,0,2,2,addLabel=True)
+
+    b2 = BarGraph(supportData=False,name = "Bar Gain/Loss Graph")
     b2.addPlot(barGraphPriceIntervalGainLoss, "Bar Percentage")
-    app.addGraph(b2, 8, 0,2,2, addLabel=True)
+    app.addGraph(b2, 10, 0,2,2, addLabel=True)
 
     t1 = Text(txtParserAvgPrice,CommonStyle.CenterText,"Avg Price",pos='left')
-    app.addText(t1,10,0)
+    app.addText(t1,12,0)
 
     t2 = Text(txtParserVolumeSum, CommonStyle.CenterText,"Total Volume",)
-    app.addText(t2,10,0)
+    app.addText(t2,12,0)
     t2 = Text(txtParserCashSum, CommonStyle.CenterText, "Total Cash", pos='right')
-    app.addText(t2, 10, 0)
+    app.addText(t2, 12, 0)
 
     t2 = Text(txtParserPriceVolumeProduct, CommonStyle.CenterText,"Price Volume Product", pos ='left')
-    app.addText(t2, 11, 0)
+    app.addText(t2, 13, 0)
 
     t2 = Text(txtParserCashDifference, CommonStyle.CenterText, "Gain/Loss")
-    app.addText(t2, 11, 0)
+    app.addText(t2, 13, 0)
     t2 = Text(txtParserGainLossPerVolume, CommonStyle.CenterText, "Gain/Loss", pos = 'right')
-    app.addText(t2, 11, 0)
+    app.addText(t2, 13, 0)
 
 
     app.start()
