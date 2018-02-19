@@ -43,18 +43,38 @@ class TimeFormat:
         tradesDF['interval'] = x
 
         return tradesDF
+def parseSideVolume(tradesDF):
+
+    if ('interval' in tradesDF):
+        d = dict((tradesDF.groupby('interval').sum())['side'])
+
+    else:
+        d = dict((tradesDF.groupby('time').sum())['side'])
+    x = []
+    y = []
+
+    for k, v in d.items():
+        x.append(k)
+        y.append(v)
+
+        # if('interval' not in tradesDF):
+        #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
+    x = datetimeToTimeStamp(x)
+
+    return x, y
 
 
 def parseVolume(tradesDF):
 
 
-
     if ('interval' in tradesDF):
         d = dict((tradesDF.groupby('interval').sum())['volume'])
+
     else:
         d = dict((tradesDF.groupby('time').sum())['volume'])
     x = []
     y = []
+
     for k, v in d.items():
         x.append(k)
         y.append(v)
@@ -220,6 +240,57 @@ def parse24HrVolume(data):
 
     return x, y
 
+
+def parseBuySell(data):
+    parse(data)
+
+    print(len(data['main']))
+    print(len(data['support']))
+
+    suppdata = data['support']
+
+    if ('interval' in data['main']):
+
+        sd = dict((suppdata.groupby('interval').sum())['side'])
+        d = dict((data['main'].groupby('interval').sum())['side'])
+    else:
+        sd = dict((suppdata.groupby('time').sum())['side'])
+        d = dict((data['main'].groupby('time').sum())['side'])
+
+
+    sdk = list(sd.keys())
+    sdk.sort()
+    dk = list(d.keys())
+    dk.sort()
+
+    allk = sdk+dk
+
+    start_mood= 0
+    for i in sdk:
+        start_mood+=sd[i]
+
+    buySell24Hr = [start_mood]
+
+    for i in range(1,len(dk)):
+        print(allk[i-1])
+
+
+        if allk[i-1] in sdk:
+            start_mood -= sd[allk[i - 1]]
+        else:
+            start_mood -= d[allk[i - 1]]
+
+        start_mood+=d[allk[i+len(sdk)-1]]
+
+        buySell24Hr.append(start_mood)
+
+
+    y = buySell24Hr
+        # if('interval' not in tradesDF):
+        #   x= [dt.datetime.strptime(i, TRADES_TIME_FORMAT) for i in x]
+    x = datetimeToTimeStamp(dk)
+
+    return x, y
 
 def parseCash(data):
     parse(data)

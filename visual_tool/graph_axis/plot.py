@@ -37,6 +37,7 @@ class Graph():
         self.plots={}
         self.plots_color={}
         self.dataParser= {}
+        self.can_plot_replot ={}
         self.needSuppData= supportData
         if axisItem is None:
             axisItem = DateAxis(orientation='bottom')
@@ -60,20 +61,22 @@ class Graph():
         self.interval = None
 
 
+        self.addStandardButtons()
+
+
     def setLabel(self,label):
         self.label = label
     def needsSupportData(self):
         return self.needSuppData
 
-    def addPlot(self,parser, name = None, color = 'g'):
+    def addPlot(self,parser, can_replot= True, name = None, color = 'g'):
         dataItem = self.graph.plot()
-        self.addStandardButtons()
-
 
 
         if(name is None):
             name = self.plot_count
 
+        self.can_plot_replot[name] = can_replot
         self.plots[name] = dataItem
         self.plots_color[name] = color
         self.dataParser[name] = parser
@@ -85,16 +88,17 @@ class Graph():
             TimeFormat.makeTimeIntervals(data,self.time_unit,self.interval)
             TimeFormat.makeTimeIntervals(suppData, self.time_unit, self.interval)
 
-
         if suppData is not None:
-            self.supportData = pd.concat([self.supportData, suppData.copy()])
-        self.data = pd.concat([self.data, data.copy()])
+            self.supportData = pd.concat([self.supportData, suppData])
+        self.data = pd.concat([self.data, data])
 
         self.plot()
 
-    def plot(self):
+    def plot(self, isReplot = False):
 
         for k,v in self.plots.items():
+            if not self.can_plot_replot[k] and isReplot is True:
+                continue
 
             if self.needSuppData:
                 x, y = self.dataParser[k]({
@@ -115,14 +119,25 @@ class Graph():
             for x_,y_ in self.xNy.items():
                 x.append(x_)
                 y.append(y_)
+
             '''
-            xy = {"x":x,"y":y}
-            v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
+            if x is not None and y is not None:
+                xy = {"x":x,"y":y}
+                v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
 
 
     def replot(self, time_unit,interval):
+
+
         if time_unit is None and interval is None:
-            self.data.drop(['interval'])
+            if self.intervalTransformer is False:
+                return
+
+            self.data = self.data.drop(labels= ['interval'])
+
+            if self.needSuppData:
+                self.supportData= self.supportData.drop(labels = ['interval'])
+
             self.plot()
             self.intervalTransformer=False
             return
@@ -134,10 +149,10 @@ class Graph():
         if self.needSuppData:
             TimeFormat.makeTimeIntervals(self.data,time_unit,interval)
             TimeFormat.makeTimeIntervals(self.supportData,time_unit,interval)
-            self.plot()
+            self.plot(True)
         else:
             TimeFormat.makeTimeIntervals(self.data,time_unit,interval)
-            self.plot()
+            self.plot(True)
 
 
 
@@ -274,7 +289,7 @@ class BarGraph(Graph):
         return self.supportData
 
     def addData(self,data,supportData= None):
-        self.data = pd.concat([self.data,data.copy()])
+        self.data = pd.concat([self.data,data])
         self.plot()
 
 

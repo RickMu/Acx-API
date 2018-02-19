@@ -54,6 +54,7 @@ class SmartRequests:
                                                           systime.month,systime.day,systime.hour,systime.minute,1)
             systime = systime - datetime.timedelta(days=1)
             requests.append(rq)
+            print(rq)
 
         if self.hour is not 0:
             rq = self.requestBuilder.buildFindInBetweenRequest(self.db, self.ticker, systime.year,
@@ -98,7 +99,7 @@ class HttpClient(pg.QtCore.QThread):
         self.db = db
 
     def initialize(self):
-        self.smartRequest.set(self.db, self.ticker, day=3, hour=3)
+        self.smartRequest.set(self.db, self.ticker, day=5, hour=3)
 
     def run(self):
         if self.ticker == None:
@@ -132,7 +133,9 @@ if __name__=="__main__":
     db = GdxExchange()
     sq = SmartRequests()
 
-    sq.set(GdxExchange(),GdxExchange.Ticker.BITCOIN,day=2,hour=8)
+    sq.set(GdxExchange(),GdxExchange.Ticker.ETHER,day=0,hour=3)
+
+
 
 
 

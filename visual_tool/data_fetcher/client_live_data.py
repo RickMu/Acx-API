@@ -24,14 +24,24 @@ class ClientLiveData(pg.QtCore.QThread):
 
     def run(self):
         while True:
-            time.sleep(8)
+
             print('fetching trades')
             data = self.conn.fetchTrades(self.ticker,self.lastID)
 
-            m = self.db.coins[self.ticker]
-            m.addTrades(data)
-            trades = m.getRecentTradesDF()
-            self.lastID =  trades.iloc[0]['id']
-            self.newData.emit(trades, None)
+            #Due to connection error mostly
+            if data is None:
+                time.sleep(1)
+            else:
+                m = self.db.coins[self.ticker]
+                m.addTrades(data)
+                trades = m.getRecentTradesDF()
+                self.lastID = trades.iloc[0]['id']
+                self.newData.emit(trades, None)
+
+                time.sleep(8)
+
+
+
+
 
 

@@ -53,6 +53,12 @@ class Coin:
         self.recentTrades['price'].append(float(trade['price']))
         self.recentTrades['id'].append(trade['id'])
 
+        if trade['side'] == 'buy':
+            self.recentTrades['side'].append(float(trade['volume']))
+        else:
+            self.recentTrades['side'].append(-1*float(trade['volume']))
+
+
         vol = float(trade['volume'])
         cash = (vol * float(trade['price']))
 

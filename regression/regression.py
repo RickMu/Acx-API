@@ -118,7 +118,6 @@ def getPrice(data):
 
 
 data = makeTimeIntervals(data, 'min', 5)
-
 dt = data.groupby('interval')
 
 pds = [dt.get_group(x) for x in dt.groups]
@@ -160,7 +159,6 @@ for i in range(len(sets)):
         row[k] = y[k]
     for k in vola:
         row[k] = vola[k]
-
     dcts.append(row)
 
 

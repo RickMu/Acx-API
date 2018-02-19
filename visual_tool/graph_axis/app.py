@@ -80,9 +80,9 @@ class pyQtTimeGraphWrapper():
         print("plotting")
         for p in self.graphs:
             if not p.needsSupportData():
-                p.addData(tradesDF)
+                p.addData(tradesDF.copy())
             else:
-                p.addData(tradesDF,suppData)
+                p.addData(tradesDF.copy(),suppData.copy())
 
         print("updating altcoin")
 
@@ -106,10 +106,12 @@ if __name__ == "__main__":
     from  visual_tool.graph_axis.plot import Graph, BarGraph
     from  visual_tool.graph_axis.text import Text, CommonStyle
     from  visual_tool.data_parser.parser import *
+    from visual_tool.data_parser.regression import  *
+
     acx = AcxExchange()
     gdx = GdxExchange()
 
-    app = pyQtTimeGraphWrapper(gdx,GdxExchange.Ticker.BITCOIN,100,3)
+    app = pyQtTimeGraphWrapper(gdx,GdxExchange.Ticker.BITCOIN,100,3,live= True)
 
     g1= Graph(supportData=False, name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")
@@ -121,15 +123,21 @@ if __name__ == "__main__":
 
     g3 = Graph(supportData=False,name="Volume Graph")
     g3.addPlot(parseVolume, "Volume Graph")
+    #g3.addPlot(parseSideVolume, "Volume Side Graph")
+    #g3.addPlot(TradeVolumeRegression().addData,can_replot=False, name ="Volume Graph Pred",color='r')
     app.addGraph(g3, 4, 0,2,2, addLabel=True)
 
     g4 = Graph(supportData=True, name="24Hr Volume Graph")
     g4.addPlot(parse24HrVolume, "24Hr Volume Graph")
     app.addGraph(g4, 6, 0, 2, 2, addLabel=True)
 
+    g5 = Graph(supportData=True, name="24Hr Mood Graph")
+    g5.addPlot(parseBuySell, "24Hr Mood Graph")
+    app.addGraph(g5, 8, 0, 2, 2, addLabel=True)
+
     b1 = BarGraph(supportData=False,name="Bar Percentage Graph")
     b1.addPlot(barGraphPriceIntervalVolumePercentage, "Bar Percentage")
-    app.addGraph(b1,8,0,2,2,addLabel=True)
+    #app.addGraph(b1,8,0,2,2,addLabel=True)
 
     b2 = BarGraph(supportData=False,name = "Bar Gain/Loss Graph")
     b2.addPlot(barGraphPriceIntervalGainLoss, "Bar Percentage")
