@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+sys.path.append("B:\\MyGit\\Acx-API")
 print(sys.path)
 
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     acx = AcxExchange()
     gdx = GdxExchange()
 
-    app = pyQtTimeGraphWrapper(gdx,GdxExchange.Ticker.BITCOIN,100,3,live= True)
+    app = pyQtTimeGraphWrapper(gdx,GdxExchange.Ticker.ETHER,100,3,live= True)
 
     g1= Graph(supportData=False, name = "Price Graph")
     g1.addPlot(parsePrice,"price Graph")

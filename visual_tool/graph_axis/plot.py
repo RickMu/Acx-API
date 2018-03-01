@@ -123,7 +123,7 @@ class Graph():
             '''
             if x is not None and y is not None:
                 xy = {"x":x,"y":y}
-                v.setData(xy, symbol='o', symbolSize=5, symbolBrush=(self.plots_color[k]))
+                v.setData(xy, symbol='o', symbolSize=1, symbolBrush=(self.plots_color[k]))
 
 
     def replot(self, time_unit,interval):
