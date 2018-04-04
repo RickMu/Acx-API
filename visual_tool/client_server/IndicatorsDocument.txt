@@ -1,0 +1,47 @@
+Question
+
+How to analyse techincal indicator's relevance
+
+- Conventional Approach investigate how they are used to make decisions
+- Analysis of their weights in ML cases
+
+
+Indicators
+Moving Average
+Momentum
+Stochastic K
+Stochastic D
+relative strength index
+Moving Average Convergence Divergence
+Larry William's R
+Accumulation Distribution Oscillator
+Commodity Channel Index
+
+Moving Average:(Periods, Intervals)
+Use-Case:
+when trend is looking up any cross over between the actual price and the moving average implies enter
+when down intersection means exit
+
+Use-Case
+Utility of 2 moving averages one with long period of time and the other with shorter period of time
+Cross overs mean change in trend
+
+Momentum: (Periods, Intervals)
+
+M = P - PN(price n days ago)
+
+
+
+RSI: (Periods, Intervals)
+
+RSI = 100 - 100/(1+RS)
+RS = (totalGain/N) / (totalLoss/N )
+
+Consecutive RS = (prevAvgGain * N-1 + CurrentGain) / N
+				----------------------------------------
+				(prevAvgLoss * N-1 + CurrentLoss) / N
+
+
+Stochastic K and D: (Periods, Intervals)
+K = C-LN/ (HN-LN)
+D = 100*(HN-LN)

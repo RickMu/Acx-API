@@ -99,7 +99,7 @@ class HttpClient(pg.QtCore.QThread):
         self.db = db
 
     def initialize(self):
-        self.smartRequest.set(self.db, self.ticker, day=5, hour=3)
+        self.smartRequest.set(self.db, self.ticker, day=7, hour=3)
 
     def run(self):
         if self.ticker == None:

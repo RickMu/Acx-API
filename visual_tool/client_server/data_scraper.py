@@ -7,7 +7,7 @@ db =GdxExchange()
 ticker = GdxExchange.Ticker.BITCOIN
 
 smartRequest = SmartRequests()
-smartRequest.set(db, ticker, day=12, hour=0)
+smartRequest.set(db, ticker, day=20, hour=0)
 
 #request = self.requestBuilder.buildFindInBetweenRequest(k,2018,1,17,1)
 trades, suppTrades = smartRequest.buildAfterTimeRequest()
