@@ -3,5 +3,7 @@ bin
 .idea
 build/**
 *.properties
+regression/**
 *.log
 *.pyc
+*.csv
