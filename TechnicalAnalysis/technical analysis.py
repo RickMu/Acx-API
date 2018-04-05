@@ -2,6 +2,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 datasource = pd.read_csv("./12dayCoinBase.csv",squeeze= True)
 
 datasource = datasource.drop(columns = ['id','side','cash'])
@@ -42,108 +43,76 @@ datasource = makeTimeIntervals(datasource, 'min', time_interval=15)
 #%%
 
 data= datasource.groupby('interval').agg({'price':['min', 'max','mean'], 'volume':'sum'})
+Periods = 14
 
+
+#using rolling mechnism
+
+def rsi(values):
+    up = values[values>0].mean()
+    down = -1*values[values<0].mean()
+    return 100 * up / (up + down)
+
+def movingAvg(values):
+    return sum(values)/len(values)
+
+def RSI(data,periods=Periods):
+    data['diff'] = (data['price']['mean'] - data['price']['mean'].shift(1) )
+    data['RSI'] = data['diff'].rolling(periods).apply(rsi).fillna(0)
+
+def momentum(data,periods=Periods):
+    data['Momentum'] =data['price']['mean']- data['price']['mean'].shift(Periods)
+    
+def stoKD(data,periods):
+    data['STOK'] = 100*(data['price']['mean'] - pd.rolling_min(data['price']['min'],periods)) / (pd.rolling_max(data['price']['max'], periods) - pd.rolling_min(data['price']['min'],periods))
+    data['STOD'] = pd.rolling_mean(data['STOK'],periods//2)
+    data['STOK']=data['STOK'].fillna(0)
+    data['STOD']= data['STOD'].fillna(0)
+
+def volSTOKD(data,periods=Periods):
+    
+    data['VolSTOK'] = 100*(data['volume']['sum'] - pd.rolling_mean(data['volume']['sum'],periods)) / (pd.rolling_max(data['volume']['sum'], periods) - pd.rolling_min(data['volume']['sum'],periods))
+    data['VolSTOD'] = pd.rolling_mean(data['VolSTOK'],periods//3)
+    data['VolSTOK']=data['VolSTOK'].fillna(0)
+    data['VolSTOD']= data['VolSTOD'].fillna(0)
+
+RSI(data)
+momentum(data)
+data['MA'] = data['price']['mean'].rolling(Periods).apply(movingAvg).fillna(0)
+stoKD(data,Periods)
+volSTOKD(data)
 #%%
-Periods = 5
-
-height = data.shape[0]
-
-
-def structure(name, data, initFunc, loopFunc, period= Periods):
-    height = data.shape[0]
-    ret = [0]*height
-    
-    initVal = initFunc(data, period)
-    
-    for i in range(period,height):
-        initVal = loopFunc(data,i,period, initVal)
-        ret[i] = initVal
-    data[name] = ret
-    return ret
-        
-    
-def movingAvgInit(data,period):
-    return sum(data['price']['mean'].values[:period])/period
-
-def movingAvgLoopFunc(data,i,period,initVal):
-    vals =data['price']['mean'].values
-    initVal *=period
-    initVal += (vals[i] - vals[i-period])
-    return initVal/period
-
-MA1 = structure('MA',data,movingAvgInit,movingAvgLoopFunc)
-
-
-def momentumInitFunc(data,period):
-    return 0
-
-def momentumLoopFunc(data, i,period,initVal):
-    vals =data['price']['mean'].values
-    initVal = (vals[i] - vals[i-period])
-    return initVal
-Momentum = structure('momentum',data,momentumInitFunc, momentumLoopFunc)
-
-
-def stochasticKInit(data,period):
-    return 0
-
-def stochasticKLoop(data,i,period,initVal):
-    mean = data['price']['mean'].values
-    high = data['price']['max'].values
-    low = data['price']['min'].values
-    
-    lowest = min(low[i-period:i+1])
-    highest = max(high[i-period:i+1])
-    current = mean[i]
-    return (current-lowest)*100/(highest-lowest)
-
-stochasticK = structure('stochasticK',data,stochasticKInit,stochasticKLoop)
-
-def williamRInit(data,period):
-    return 0
-
-def williamRLoopFunc(data,i,period,initVal):
-    mean = data['price']['mean'].values
-    high = data['price']['max'].values
-    low = data['price']['min'].values
-    
-    lowest = min(low[i-period:i+1])
-    highest = max(high[i-period:i+1])
-    current = mean[i]
-    return (highest-current)*100/(highest-lowest)
-
-williamR = structure('williamR',data,williamRInit,williamRLoopFunc)
-
-def volumeInit(data,period):
-    return 0
-
-def stochasticKVolumeLoopFunc(data,i,period,initVal):
-    vols = data['volume'].values
-    high = max(vols[i-period:i+1])
-    low = min (vols[i-period:i+1])
-    current = vols[i]
-    
-    return (current-low)*100/(high-low)
-
-stochasticKVolume = structure('stochasticVolume',data,volumeInit,stochasticKVolumeLoopFunc)
-
-
-
-#%%
-%matplotlib auto
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+
+scaler = MinMaxScaler(feature_range=(0,150))
 
 x_axis = data.index.values
 
 mean = data['price']['mean'].values
 ma = data['MA'].values
-sto_K = data['stochasticK'].values
+sto_K = data['STOK'].values
+sto_D = data['STOD'].values
+rsi = data['RSI'].values
          
+
+
+
+mean = np.asarray(mean)
+mean = mean.reshape(-1,1)
+scaler = scaler.fit(mean)
+mean = scaler.transform(mean)
+
+ma= np.asarray(ma)
+ma = ma.reshape(-1,1)
+ma = scaler.transform(ma)
+
 plt.plot(mean)
+#plt.plot(sto_K)
 plt.plot(ma)
-
-plt.plot(sto_K)
-
+#plt.plot(sto_D)
+plt.plot(rsi)
 #%%
 
 

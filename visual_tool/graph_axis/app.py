@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:\\Users\\Rick\\PycharmProjects\\Acx-API")
+sys.path.append("B:\\MyGit\\Acx-API")
 print(sys.path)
 
 
